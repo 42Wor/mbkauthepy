@@ -40,3 +40,5 @@ importlib-metadata>=4.4; python_version < "3.10"
 
 # For parsing TOML files (used in mbkauthe /package-lock endpoint if parsing poetry.lock)
 toml>=0.10.0
+
+flask_sqlalchemy
