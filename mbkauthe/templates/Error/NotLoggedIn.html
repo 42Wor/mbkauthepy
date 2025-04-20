@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Not Logged In</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .error-container { border: 1px solid #f5c6cb; background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; }
+        a { color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>Not Logged In</h1>
+        <p>You must be logged in to access this page.</p>
+        <p>Please <a href="/login?redirect={{ currentUrl | urlencode }}">log in</a>.</p> {# Example redirect #}
+        {# Or provide a link to your main login page #}
+        {# <p>Please <a href="/your/login/page">log in</a>.</p> #}
+    </div>
+</body>
+</html>

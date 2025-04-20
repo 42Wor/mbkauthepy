@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MBKAuthe Test Site{% endblock %}</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .navbar { background-color: #333; overflow: hidden; padding: 10px 20px; }
+        .navbar a { float: left; display: block; color: #f2f2f2; text-align: center; padding: 14px 16px; text-decoration: none; }
+        .navbar a:hover { background-color: #ddd; color: black; }
+        .navbar .right { float: right; }
+        .container { max-width: 960px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .flash-message { padding: 10px; margin-bottom: 15px; border-radius: 3px; }
+        .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .flash-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        button, input[type=submit] { background-color: #5cb85c; color: white; padding: 10px 15px; border: none; border-radius: 3px; cursor: pointer; font-size: 1em; }
+        button:hover, input[type=submit]:hover { background-color: #4cae4c; }
+        #logoutButton { background-color: #d9534f; }
+        #logoutButton:hover { background-color: #c9302c; }
+        .hidden { display: none; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="{{ url_for('index') }}">Docs</a>
+        <a href="{{ url_for('home') }}">Home (Protected)</a>
+        <div class="right">
+            {% if session.get('user') %}
+                <span style="color: white; padding: 14px 10px; display: inline-block;">Welcome, {{ session['user']['username'] }}!</span>
+                <a href="#" id="logoutLink">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        {# Display flashed messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <script>
+        // --- Helper to get non-HttpOnly cookie ---
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        // --- Logout Handler ---
+        const logoutLink = document.getElementById('logoutLink');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', async (event) => {
+                event.preventDefault(); // Prevent default link behavior
+                console.log('Logout clicked');
+                try {
+                    const response = await fetch('/mbkauthe/api/logout', {
+                        method: 'POST'
+                        // Cookies sent automatically by browser
+                    });
+                    const data = await response.json();
+                    if (response.ok && data.success) {
+                        console.log('Logout successful');
+                        window.location.href = "{{ url_for('login') }}"; // Redirect to login page
+                    } else {
+                        console.error('Logout failed:', data.message);
+                        alert(`Logout failed: ${data.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Logout fetch error:', error);
+                    alert('Logout request failed. Check console.');
+                }
+            });
+        }
+
+         // --- Initial UI update based on cookie (optional but nice) ---
+         // This just ensures the navbar reflects the state correctly on load
+         // It doesn't replace server-side session checks
+         document.addEventListener('DOMContentLoaded', () => {
+            const loggedInUsername = getCookie('username');
+            const userSpan = document.querySelector('.navbar .right span');
+            const loginLink = document.querySelector('.navbar .right a[href="{{ url_for('login') }}"]'); // Corrected selector // Corrected selector
+
+            if (loggedInUsername) {
+                if (userSpan) userSpan.textContent = `Welcome, ${decodeURIComponent(loggedInUsername)}!`;
+                if (loginLink) loginLink.style.display = 'none'; // Hide login link
+                if (logoutLink) logoutLink.style.display = 'inline-block'; // Show logout link
+            } else {
+                 if (userSpan) userSpan.style.display = 'none'; // Hide welcome message
+                 if (loginLink) loginLink.style.display = 'inline-block'; // Show login link
+                 if (logoutLink) logoutLink.style.display = 'none'; // Hide logout link
+            }
+         });
+
+    </script>
+     {% block extra_js %}{% endblock %} {# Placeholder for page-specific JS #}
+</body>
+</html>

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Home - MBKAuthe Test Site{% endblock %}
+
+{% block content %}
+    <h1>Welcome to the Home Page, {{ username }}!</h1>
+    <p>This page is protected and only accessible when you are logged in.</p>
+    <p>Your session is managed by the <code>mbkauthe</code> library.</p>
+
+    <p>You can click "Logout" in the navigation bar to end your session.</p>
+
+    {# Example: Add a button that triggers the logout JS explicitly #}
+    {# <button id="logoutButton">Logout Now</button> #}
+
+{% endblock %}
+
+{# No extra JS needed here as logout is handled by the base template's navbar JS #}

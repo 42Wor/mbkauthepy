@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Docs - MBKAuthe Test Site{% endblock %}
+
+{% block content %}
+    <h1>MBKAuthe Testing Documentation</h1>
+    <p>This website is designed to test the <code>mbkauthe</code> authentication library.</p>
+    <ul>
+        <li>The <a href="{{ url_for('home') }}">Home Page</a> is protected and requires you to be logged in.</li>
+        <li>If you are not logged in, you will be redirected to the <a href="{{ url_for('login') }}">Login Page</a>.</li>
+        <li>Use the navigation bar above to log in or log out.</li>
+    </ul>
+    <p>The actual authentication logic (checking passwords, managing sessions) is handled by the <code>mbkauthe</code> library via its API endpoints (<code>/mbkauthe/api/login</code> and <code>/mbkauthe/api/logout</code>), which are called by the JavaScript on the login page and in the navigation bar.</p>
+
+    <h2>Current Status</h2>
+    {% if session.get('user') %}
+        <p style="color: green;">You are currently logged in as: <strong>{{ session['user']['username'] }}</strong></p>
+        <p>You can access the <a href="{{ url_for('home') }}">Home Page</a>.</p>
+    {% else %}
+        <p style="color: red;">You are currently not logged in.</p>
+        <p>Click <a href="{{ url_for('login') }}">Login</a> in the navigation bar to log in.</p>
+    {% endif %}
+{% endblock %}
