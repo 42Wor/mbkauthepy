@@ -1,25 +1,71 @@
-[tool.poetry]
-name = "mbkauthe-python"
-version = "0.1.0" # Match JS version or start fresh
-description = "Reusable authentication system for Python Flask applications, ported from Node.js mbkauthe."
-authors = ["Maaz.waheed <support@mbktechstudio.com>"]
-license = "MPL-2.0"
-readme = "README.md"
-repository = "https://github.com/42Wor/mbkauthe-python" # Example repo
-homepage = "https://github.com/42Wor/mbkauthe-python" # Example repo
-
-[tool.poetry.dependencies]
-python = "^3.8"
-Flask = "^2.3.0"
-Flask-Session = "^0.5.0"
-psycopg2-binary = "^2.9.5" # Or psycopg2 if compiling
-python-dotenv = "^1.0.0"
-bcrypt = "^4.0.1"
-requests = "^2.28.1"
-pyotp = "^2.8.0"
-Flask-Cors = "^4.0.0"
-importlib-metadata = { version = "^6.0.0", python = "<3.10" } # For package version reading
+# pyproject.toml
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+# Specifies build tools. setuptools is common.
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# --- Core Metadata ---
+name = "mbkauthepy" # The name used for pip install (MUST be unique on PyPI)
+version = "1.1.0" # Start with a version (e.g., 0.1.0). Increment for updates!
+authors = [
+  { name="Maaz.waheed", email="maaz.waheed@mbktechstudio.com" },
+  # Add others if applicable
+]
+
+description = "Reusable authentication system for Python Flask applications with PostgreSQL backend."
+readme = "README.md" # Specifies the README file for the long description on PyPI
+requires-python = ">=3.8" # Minimum Python version supported
+license = { file = "LICENSE" } # Points to your LICENSE file (e.g., MPL-2.0)
+keywords = ["flask", "authentication", "session", "auth", "postgresql", "security"]
+classifiers = [
+    # Trove classifiers - help users find your package
+    "Development Status :: 3 - Alpha", # Or 4 - Beta, 5 - Production/Stable
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration :: Authentication/Directory",
+    "Topic :: Security",
+    "Framework :: Flask",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Web Environment",
+]
+
+# --- Dependencies ---
+# List packages your library *requires* to run
+dependencies = [
+    "Flask>=2.0",
+    "Flask-Session>=0.5",
+    "psycopg2-binary>=2.9", # Or psycopg2 if users compile
+    "python-dotenv>=1.0",
+    "bcrypt>=4.0",
+    "requests>=2.28",
+    "pyotp>=2.8",
+    "Flask-Cors>=4.0", # If CORS is integral
+    "SQLAlchemy>=1.4", # Needed if using sqlalchemy session type internally
+    "importlib-metadata; python_version<'3.10'", # Conditional dependency
+    # Add Werkzeug explicitly if you rely on specific versions beyond Flask's requirement
+    # "Werkzeug>=2.0",
+]
+
+# --- Project URLs ---
+# Links displayed on PyPI
+[project.urls]
+Homepage ="https://github.com/42Wor/mbkauthepy"
+Repository ="https://github.com/42Wor/mbkauthepy"
+
+# --- Include Package Data (Templates!) ---
+# Tells setuptools to include non-code files within the package
+[tool.setuptools.package-data]
+mbkauthepy = ["templates/Error/*.html"]
+
+# --- Optional: Entry points (if you provide command-line scripts) ---
+# [project.scripts]
+# my-script = "mbkauthe.cli:main"

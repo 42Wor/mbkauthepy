@@ -173,3 +173,24 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .idea
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Env files (sensitive!)
+.env
+
+# IDE files
+.idea/
+.vscode/
