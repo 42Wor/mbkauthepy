@@ -9,10 +9,8 @@ from dotenv import load_dotenv
 
 # --- MBKAUTHE Import ---
 try:
-    # Import configure_mbkauthe to set up DB pool, routes etc.
     from mbkauthe import configure_mbkauthe
-    # Import the custom interface (make sure file path is correct)
-    from custom_session_interface import CustomDbSessionInterface
+    from mbkauthe import CustomDbSessionInterface
 except ImportError as e:
     print(f"ERROR: Cannot import mbkauthe or custom session interface. Details: {e}")
     print("Ensure mbkauthe is installed (-e ./mbkauthe) and custom_session_interface.py exists.")
@@ -36,19 +34,16 @@ logging.basicConfig(level=logging.INFO)
 app.logger.setLevel(logging.INFO)
 
 # --- MBKAUTHE Configuration ---
-# Call configure_mbkauthe to set up DB pool, load mbkauthe config, register API routes.
-# This version of configure_mbkauthe WILL NOT initialize Flask-Session.
+
 try:
     app.logger.info("Attempting to configure mbkauthe base components...")
     configure_mbkauthe(app)
-    # configure_mbkauthe logs its own success/failure messages now
 except Exception as e:
     app.logger.error(f"FATAL: Failed to configure mbkauthe: {e}", exc_info=True)
     print(f"FATAL: Failed to configure mbkauthe: {e}")
     exit(1)
 
-# --- Custom Session Interface Setup ---
-# Explicitly set the session interface *after* basic app/mbkauthe config
+
 try:
     # Get the table name from the config mbkauthe loaded into app.config
     mbk_config = app.config.get("MBKAUTHE_CONFIG", {})

@@ -93,3 +93,4 @@ from .middleware import (
 from .routes import mbkauthe_bp # Ensure blueprint is available for export
 from .db import db_pool # Export pool object if needed
 from .utils import get_cookie_options # Export utils if needed
+from mbkauthe.custom_session_interface import CustomDbSessionInterface
