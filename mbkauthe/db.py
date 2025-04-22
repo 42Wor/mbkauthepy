@@ -1,100 +1,65 @@
-# mbkauthe/db.py
+# mbkauthe/db.py (Simplified - No Pooling)
 
 import psycopg2
-import psycopg2.pool
+import psycopg2.extras # Keep for DictCursor if used elsewhere
 import logging
-from .config import MBKAUTHE_CONFIG
+import os # Needed for environment variable access if MBKAUTHE_CONFIG isn't passed
+
+# Import config loading logic or access config directly
+# Assuming MBKAUTHE_CONFIG is loaded in config.py and accessible
+try:
+    from .config import MBKAUTHE_CONFIG
+except ImportError:
+    # Fallback or error handling if config structure is different
+    # This might happen if db.py is imported before config is fully loaded
+    # A better pattern might involve passing config explicitly or using Flask's app context
+    logger = logging.getLogger(__name__)
+    logger.warning("Could not import MBKAUTHE_CONFIG from .config in db.py. Ensure config is loaded.")
+    # Attempt to load directly from env as a fallback (less ideal)
+    try:
+        import json
+        from dotenv import load_dotenv
+        load_dotenv()
+        MBKAUTHE_CONFIG = json.loads(os.environ.get("mbkautheVar", "{}"))
+        if not MBKAUTHE_CONFIG.get("LOGIN_DB"):
+             raise ValueError("LOGIN_DB not found in mbkautheVar")
+    except Exception as e:
+         raise ImportError(f"Failed to load LOGIN_DB configuration for db.py: {e}")
+
 
 logger = logging.getLogger(__name__)
 
-db_pool = None
-
-def init_db_pool():
-    """Initializes the PostgreSQL connection pool. Idempotent."""
-    global db_pool
-    if db_pool is not None:
-        # logger.debug("Database pool already initialized.") # Optional: reduce log noise
-        return db_pool
-
-    logger.info("Initializing database connection pool...") # Log init attempt
-    try:
-        # Using ThreadedConnectionPool for multi-threaded Flask apps
-        db_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,  # Adjust maxconn as needed
-            dsn=MBKAUTHE_CONFIG["LOGIN_DB"],
-            # sslmode='require' # Adjust SSL mode based on your DB requirements
-        )
-        # Test connection
-        conn = db_pool.getconn()
-        logger.info("Connected to PostgreSQL database (pool)!")
-        db_pool.putconn(conn)
-        return db_pool
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f"Database connection pool initialization error: {error}")
-        db_pool = None # Ensure pool is None if init fails
-        raise # Re-raise the exception to signal failure
+# --- Removed Pooling Logic ---
+# db_pool = None
+# def init_db_pool(): ...
+# def close_db_pool(): ...
+# --- End Removed Pooling Logic ---
 
 def get_db_connection():
-    """Gets a connection from the pool. Initializes pool if necessary."""
-    global db_pool
-    # --- Modification Start ---
-    if db_pool is None:
-        logger.warning("Database pool was not initialized. Attempting to initialize now.")
-        try:
-            # Try to initialize it before proceeding
-            init_db_pool()
-            # Check again if initialization failed
-            if db_pool is None:
-                 logger.error("Failed to initialize database pool on demand.")
-                 raise ConnectionError("Database pool initialization failed.")
-        except Exception as e:
-             # Catch potential errors during the on-demand init
-             logger.error(f"Failed to auto-initialize pool in get_db_connection: {e}")
-             raise ConnectionError("Database pool could not be initialized.") from e
-    # --- Modification End ---
-
-    # Now db_pool should exist (unless init failed above)
+    """Gets a new database connection for the current request."""
+    logger.debug("Attempting to establish new DB connection.")
     try:
-        return db_pool.getconn()
-    except psycopg2.pool.PoolError as e:
-        logger.error(f"Error getting connection from pool: {e}")
-        raise
-    except AttributeError:
-         # Safety net in case db_pool is None despite the check (shouldn't happen often)
-         logger.error("AttributeError: db_pool became None unexpectedly before getting connection.")
-         raise ConnectionError("Database pool is unexpectedly unavailable.")
+        # Get connection string from loaded config
+        connection_string = MBKAUTHE_CONFIG.get("LOGIN_DB")
+        if not connection_string:
+            raise ValueError("LOGIN_DB configuration is missing.")
 
+        # Create a new connection each time this function is called
+        conn = psycopg2.connect(dsn=connection_string)
+        logger.debug("New DB connection established.")
+        return conn
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f"Database connection error: {error}", exc_info=True)
+        # Raise a more specific error or handle as appropriate for your app
+        raise ConnectionError("Failed to connect to the database.") from error
 
 def release_db_connection(conn):
-    """Releases a connection back to the pool."""
-    global db_pool
-    if db_pool is None:
-        # Don't log warning every time if pool is intentionally closed
-        # logger.warning("Database pool is not initialized. Cannot release connection.")
-        return
+    """Closes the database connection."""
     if conn:
         try:
-            db_pool.putconn(conn)
-        except Exception as e:
-             # Log error if putting connection back fails (e.g., pool closed)
-             logger.error(f"Error releasing DB connection: {e}")
-
-
-def close_db_pool():
-    """Closes all connections in the pool."""
-    global db_pool
-    if db_pool:
-        try:
-            db_pool.closeall()
-            logger.info("Database connection pool closed.")
-        except Exception as e:
-             logger.error(f"Error closing database pool: {e}")
-        finally:
-             # Crucially set to None after closing
-             db_pool = None
-    # else: # Optional: reduce log noise
-    #     logger.debug("Database pool already closed or not initialized.")
-
-# Remove automatic initialization here - let configure_mbkauthe handle it
-# init_db_pool()
+            conn.close()
+            logger.debug("DB connection closed.")
+        except (Exception, psycopg2.DatabaseError) as error:
+             # Log error if closing fails, but don't typically raise
+             # as the primary operation might have succeeded.
+             logger.error(f"Error closing DB connection: {error}", exc_info=True)
