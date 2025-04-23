@@ -1,6 +1,4 @@
-Absolutely! Here's your full `README.md` with clean and proper **Markdown formatting only** — no explanations, just the content formatted perfectly:
 
-```markdown
 # mbkauthe (Python/Flask Version)
 
 <!-- [![PyPI version](https://badge.fury.io/py/mbkauthe.svg)](https://badge.fury.io/py/mbkauthe) -->
