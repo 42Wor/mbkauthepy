@@ -58,7 +58,7 @@ def validate_session(f):
 
         if 'user' not in session:
             logger.warning("validate_session: User not authenticated (no session).")
-            return render_template("Error/NotLoggedIn.html", currentUrl=request.original_url), 401
+            return render_template("Error/NotLoggedIn.html", currentUrl=request.url), 401
 
         user_session = session['user']
         user_id = user_session.get('id')
@@ -67,7 +67,7 @@ def validate_session(f):
         if not user_id or not session_id:
              logger.error("validate_session: Invalid session data (missing id or sessionId).")
              session.clear()
-             resp = make_response(render_template("Error/SessionExpire.html", currentUrl=request.original_url))
+             resp = make_response(render_template("Error/SessionExpire.html", currentUrl=request.url))
              # Clear cookies just in case
              resp.delete_cookie('sessionId', **get_cookie_options())
              resp.delete_cookie('username', **get_cookie_options(http_only=False))
@@ -87,7 +87,7 @@ def validate_session(f):
             if not user_db or user_db['SessionId'] != session_id:
                 logger.warning(f"validate_session: Session invalidated for user '{user_session.get('username', 'N/A')}' (DB mismatch or user not found).")
                 session.clear()
-                resp = make_response(render_template("Error/SessionExpire.html", currentUrl=request.original_url))
+                resp = make_response(render_template("Error/SessionExpire.html", currentUrl=request.url))
                 resp.delete_cookie('sessionId', **get_cookie_options())
                 resp.delete_cookie('username', **get_cookie_options(http_only=False))
                 return resp, 401
@@ -95,7 +95,7 @@ def validate_session(f):
             if not user_db['Active']:
                 logger.warning(f"validate_session: Account inactive for user '{user_session.get('username', 'N/A')}'.")
                 session.clear()
-                resp = make_response(render_template("Error/AccountInactive.html", currentUrl=request.original_url))
+                resp = make_response(render_template("Error/AccountInactive.html", currentUrl=request.url))
                 resp.delete_cookie('sessionId', **get_cookie_options())
                 resp.delete_cookie('username', **get_cookie_options(http_only=False))
                 return resp, 403
@@ -136,7 +136,7 @@ def check_role_permission(required_role):
             if 'user' not in session or 'role' not in session['user']:
                 # This should ideally be caught by validate_session first
                 logger.error("check_role_permission: No user or role found in session.")
-                return render_template("Error/NotLoggedIn.html", currentUrl=request.original_url), 401
+                return render_template("Error/NotLoggedIn.html", currentUrl=request.url), 401
 
             user_role = session['user']['role']
 
