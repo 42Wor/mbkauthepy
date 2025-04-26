@@ -45,7 +45,7 @@ pip install mbkauthe
 
 ```python
 from flask import Flask
-from mbkauthe import configure_mbkauthe
+from src.mbkauthe import configure_mbkauthe
 
 app = Flask(__name__)
 configure_mbkauthe(app)
@@ -85,7 +85,7 @@ configure_mbkauthe(app)
 ```python
 from flask import Flask, session
 from dotenv import load_dotenv
-from mbkauthe import configure_mbkauthe, validate_session
+from src.mbkauthe import configure_mbkauthe, validate_session
 
 load_dotenv()
 
@@ -94,14 +94,17 @@ app.config['SECRET_KEY'] = 'your-flask-secret-key'
 
 configure_mbkauthe(app)
 
+
 @app.route('/')
 def home():
     return "Welcome!"
+
 
 @app.route('/dashboard')
 @validate_session
 def dashboard():
     return f"Hello {session['user']['username']}!"
+
 
 if __name__ == '__main__':
     app.run(debug=True)

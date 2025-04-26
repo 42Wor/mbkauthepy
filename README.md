@@ -30,7 +30,7 @@
 
 | Feature                  | Description                                                                 |
 |--------------------------|-----------------------------------------------------------------------------|
-| 🧠 Multi-language Support | Use in both Python (`mbkauthe`) and JavaScript (`mbkauthe` via npm)         |
+| 🧠 Multi-language Support | Use in both Python (`mbkauthe`) and JavaScript (`mbkauthe` via [npm](https://github.com/MIbnEKhalid/mbkauthe))         |
 | 🔒 Secure Auth           | Session-based authentication with secure cookies and optional 2FA          |
 | 🧑‍🤝‍🧑 Role-based Access | Decorators for validating roles and permissions on protected routes         |
 | 🔐 2FA Support           | Time-based One-Time Password (TOTP) with `pyotp`                            |
@@ -75,7 +75,7 @@ pip install -e ./mbkauthe  # Local dev
 ```python
 from flask import Flask, render_template, session
 from dotenv import load_dotenv
-from mbkauthe import configure_mbkauthe, validate_session
+from src.mbkauthe import configure_mbkauthe, validate_session
 
 load_dotenv()
 
@@ -84,15 +84,18 @@ app.config['SECRET_KEY'] = 'your-secret-key'
 
 configure_mbkauthe(app)
 
+
 @app.route('/')
 def home():
     return render_template('index.html')
+
 
 @app.route('/dashboard')
 @validate_session
 def dashboard():
     user = session['user']
     return f"Welcome {user['username']}!"
+
 
 if __name__ == '__main__':
     app.run(debug=True)
@@ -137,12 +140,14 @@ mbkautheVar='{
 Example:
 
 ```python
-from mbkauthe import validate_session, check_role_permission, validate_session_and_role, authenticate_token
+from src.mbkauthe import validate_session, check_role_permission, validate_session_and_role, authenticate_token
+
 
 @app.route('/admin')
 @validate_session_and_role("SuperAdmin")
 def admin_panel():
     return "Welcome to the admin panel"
+
 
 @app.route('/dashboard')
 @validate_session
@@ -150,15 +155,18 @@ def dashboard():
     user = session['user']
     return f"Welcome {user['username']}"
 
+
 @app.route('/secured-admin')
 @validate_session_and_role("SuperAdmin")
 def secured_admin():
     return "Secured Area"
 
+
 @app.route('/terminate-sessions')
 @authenticate_token
 def terminate_sessions():
     return {"success": True}
+
 
 # Example of fetching user data
 data = get_user_data("johndoe", ["FullName", "email"])

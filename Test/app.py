@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 
 # --- MBKAUTHE Import ---
 try:
-    from mbkauthe import configure_mbkauthe
-    from mbkauthe import CustomDbSessionInterface
+    from src.mbkauthe import configure_mbkauthe
+    from src.mbkauthe import CustomDbSessionInterface
 except ImportError as e:
     print(f"ERROR: Cannot import mbkauthe or custom session interface. Details: {e}")
     print("Ensure mbkauthe is installed (-e ./mbkauthe) and custom_session_interface.py exists.")

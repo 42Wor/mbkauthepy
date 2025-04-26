@@ -85,22 +85,24 @@ See `app.py` and `templates/` for a full usage demo.
 
 ```python
 from flask import Flask, render_template, session
-from mbkauthe import configure_mbkauthe, validate_session
+from src.mbkauthe import configure_mbkauthe, validate_session
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 
 configure_mbkauthe(app)
 
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+  return render_template('index.html')
+
 
 @app.route('/protected')
 @validate_session
 def protected():
-    user = session.get('user')
-    return f"Welcome, {user['username']}!"
+  user = session.get('user')
+  return f"Welcome, {user['username']}!"
 ```
 
 ### Environment Variables (.env)
