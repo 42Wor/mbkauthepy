@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 # --- Core Metadata ---
 name = "mbkauthepy" # The name used for pip install (MUST be unique on PyPI)
-version = "1.1.0" # Start with a version (e.g., 0.1.0). Increment for updates!
+version = "1.2.0" # Start with a version (e.g., 0.1.0). Increment for updates!
 authors = [
   { name="Maaz.waheed", email="maaz.waheed@mbktechstudio.com" },
   # Add others if applicable
