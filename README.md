@@ -1,10 +1,10 @@
-# 🔐 mbkauthe (Python/Flask Version)
+# 🔐 mbkauthepy (Python/Flask Version)
 
-[![PyPI](https://img.shields.io/pypi/v/mbkauthe?color=blue)](https://pypi.org/project/mbkauthe/)
+[![PyPI](https://img.shields.io/pypi/v/mbkauthepy?color=blue)](https://pypi.org/project/mbkauthepy/)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
-[![Build](https://img.shields.io/github/actions/workflow/status/42Wor/mbkauthe/python-app.yml?label=build)](https://github.com/42Wor/mbkauthe/actions)
-[![Python Versions](https://img.shields.io/pypi/pyversions/mbkauthe)](https://pypi.org/project/mbkauthe/)
-[![Downloads](https://img.shields.io/pypi/dm/mbkauthe)](https://pypistats.org/packages/mbkauthe)
+[![Build](https://img.shields.io/github/actions/workflow/status/42Wor/mbkauthepy/python-app.yml?label=build)](https://github.com/42Wor/mbkauthepy/actions)
+[![Python Versions](https://img.shields.io/pypi/pyversions/mbkauthepy)](https://pypi.org/project/mbkauthepy/)
+[![Downloads](https://img.shields.io/pypi/dm/mbkauthepy)](https://pypistats.org/packages/mbkauthepy)
 
 > A fully featured, secure, and extensible authentication system for **Python Flask** applications.  
 > Originally ported from the Node.js version to provide **multi-language support** for full-stack apps.
@@ -30,7 +30,7 @@
 
 | Feature                  | Description                                                                 |
 |--------------------------|-----------------------------------------------------------------------------|
-| 🧠 Multi-language Support | Use in both Python (`mbkauthe`) and JavaScript (`mbkauthe` via [npm](https://github.com/MIbnEKhalid/mbkauthe))         |
+| 🧠 Multi-language Support | Use in both Python (`mbkauthepy`) and JavaScript (`mbkauthepy` via [npm](https://github.com/MIbnEKhalid/mbkauthepy))         |
 | 🔒 Secure Auth           | Session-based authentication with secure cookies and optional 2FA          |
 | 🧑‍🤝‍🧑 Role-based Access | Decorators for validating roles and permissions on protected routes         |
 | 🔐 2FA Support           | Time-based One-Time Password (TOTP) with `pyotp`                            |
@@ -60,12 +60,12 @@ pip install -r requirements.txt
 pip install Flask Flask-Session psycopg2-binary python-dotenv bcrypt requests pyotp Flask-Cors SQLAlchemy
 ```
 
-### 3. Install mbkauthe
+### 3. Install mbkauthepy
 
 ```bash
-pip install -e ./mbkauthe  # Local dev
+pip install -e ./mbkauthepy  # Local dev
 # OR if published:
-# pip install mbkauthe
+# pip install mbkauthepy
 ```
 
 ---
@@ -75,14 +75,14 @@ pip install -e ./mbkauthe  # Local dev
 ```python
 from flask import Flask, render_template, session
 from dotenv import load_dotenv
-from src.mbkauthe import configure_mbkauthe, validate_session
+from src.mbkauthepy import configure_mbkauthepy, validate_session
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 
-configure_mbkauthe(app)
+configure_mbkauthepy(app)
 
 
 @app.route('/')
@@ -108,7 +108,7 @@ if __name__ == '__main__':
 ```dotenv
 FLASK_SECRET_KEY=my-flask-secret
 
-mbkautheVar='{
+mbkauthepyVar='{
   "APP_NAME": "MyApp",
   "RECAPTCHA_Enabled": "false",
   "SESSION_SECRET_KEY": "super-long-random-secret",
@@ -140,7 +140,7 @@ mbkautheVar='{
 Example:
 
 ```python
-from src.mbkauthe import validate_session, check_role_permission, validate_session_and_role, authenticate_token
+from src.mbkauthepy import validate_session, check_role_permission, validate_session_and_role, authenticate_token
 
 
 @app.route('/admin')
@@ -176,16 +176,16 @@ data = get_user_data("johndoe", ["FullName", "email"])
 
 ## 🧪 API Endpoints
 
-These are available by default after calling `configure_mbkauthe(app)`:
+These are available by default after calling `configure_mbkauthepy(app)`:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/mbkauthe/api/login` | Authenticate and create session |
-| POST | `/mbkauthe/api/logout` | Terminate current session |
-| POST | `/mbkauthe/api/terminateAllSessions` | Clears all sessions (admin only) |
-| GET  | `/mbkauthe/version` | Current package version |
-| GET  | `/mbkauthe/package` | Metadata from installed package |
-| GET  | `/mbkauthe/package-lock` | Dependency info (experimental) |
+| POST | `/mbkauthepy/api/login` | Authenticate and create session |
+| POST | `/mbkauthepy/api/logout` | Terminate current session |
+| POST | `/mbkauthepy/api/terminateAllSessions` | Clears all sessions (admin only) |
+| GET  | `/mbkauthepy/version` | Current package version |
+| GET  | `/mbkauthepy/package` | Metadata from installed package |
+| GET  | `/mbkauthepy/package-lock` | Dependency info (experimental) |
 
 ---
 
