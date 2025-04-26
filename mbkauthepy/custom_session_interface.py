@@ -13,10 +13,10 @@ import psycopg2.extras
 # Import your DB connection functions from mbkauthe
 try:
     # Assuming mbkauthe is installed/accessible relative to app.py
-    from src.mbkauthe.db import get_db_connection, release_db_connection
+    from .db import get_db_connection, release_db_connection
 except ImportError:
     # Provide a more specific error if the import fails
-    raise ImportError("Could not import DB functions from mbkauthe.db. Check mbkauthe installation and structure.")
+    raise ImportError("Could not import DB functions from mbkauthepy.db. Check mbkauthepy installation and structure.")
 
 logger = logging.getLogger(__name__)
 

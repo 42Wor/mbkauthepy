@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 # --- Core Metadata ---
 name = "mbkauthepy" # The name used for pip install (MUST be unique on PyPI)
-version = "1.2.0" # Your current version
+version = "1.3.0" # Your current version
 authors = [
   { name="Maaz.waheed", email="maaz.waheed@mbktechstudio.com" },
   # Add others if applicable
@@ -66,15 +66,4 @@ Repository ="https://github.com/42Wor/mbkauthepy"
 # ADDED/MODIFIED SECTION: Tells setuptools where to find the package code
 [tool.setuptools.packages.find]
 where = ["."]  # Look in the current directory (where pyproject.toml is)
-include = ["mbkauthe*"] # IMPORTANT: Use the ACTUAL package directory name here ('mbkauthe'), not 'mbkauthepy'
-# exclude = ["tests*"] # Example: exclude a tests directory if it's at the root
-
-# --- Include Package Data (Templates!) ---
-# Tells setuptools to include non-code files within the package
-[tool.setuptools.package-data]
-# IMPORTANT: The key here MUST match the package name found by the 'find' directive above ('mbkauthe')
-mbkauthe = ["templates/Error/*.html"]
-
-# --- Optional: Entry points (if you provide command-line scripts) ---
-# [project.scripts]
-# my-script = "mbkauthe.cli:main"
+include = ["mbkauthepy"] # Include the mbkauthepy packagey

@@ -6,18 +6,8 @@ from flask import (
     Flask, render_template, request, redirect, url_for, session, flash
 )
 from dotenv import load_dotenv
-
-# --- MBKAUTHE Import ---
-try:
-    from src.mbkauthe import configure_mbkauthe
-    from src.mbkauthe import CustomDbSessionInterface
-except ImportError as e:
-    print(f"ERROR: Cannot import mbkauthe or custom session interface. Details: {e}")
-    print("Ensure mbkauthe is installed (-e ./mbkauthe) and custom_session_interface.py exists.")
-    exit(1)
-except Exception as e:
-    print(f"ERROR: An unexpected error occurred during imports: {e}")
-    exit(1)
+from mbkauthepy import configure_mbkauthe
+from mbkauthepy import CustomDbSessionInterface
 
 # Load environment variables from .env file FIRST
 load_dotenv()

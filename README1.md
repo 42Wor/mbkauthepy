@@ -45,7 +45,7 @@ pip install mbkauthe
 
 ```python
 from flask import Flask
-from src.mbkauthe import configure_mbkauthe
+from mbkauthepy import configure_mbkauthe
 
 app = Flask(__name__)
 configure_mbkauthe(app)
@@ -85,7 +85,7 @@ configure_mbkauthe(app)
 ```python
 from flask import Flask, session
 from dotenv import load_dotenv
-from src.mbkauthe import configure_mbkauthe, validate_session
+from mbkauthepy import configure_mbkauthe, validate_session
 
 load_dotenv()
 

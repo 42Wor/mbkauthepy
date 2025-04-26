@@ -85,7 +85,7 @@ See `app.py` and `templates/` for a full usage demo.
 
 ```python
 from flask import Flask, render_template, session
-from src.mbkauthe import configure_mbkauthe, validate_session
+from mbkauthepy import configure_mbkauthe, validate_session
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
