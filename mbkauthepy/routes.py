@@ -386,11 +386,11 @@ def package_info():
 def version_info():
     # ... (version_info logic as provided before) ...
     try:
-        version = importlib.metadata.version("mbkauthe")
+        version = importlib.metadata.version("mbkauthepy")
         return jsonify({"version": version})
     except importlib.metadata.PackageNotFoundError:
-        logger.error("Could not find version for 'mbkauthe' package.")
-        return jsonify({"success": False, "message": "Package 'mbkauthe' not found"}), 404
+        logger.error("Could not find version for 'mbkauthepy' package.")
+        return jsonify({"success": False, "message": "Package 'mbkauthepy' not found"}), 404
     except Exception as e:
         logger.error(f"Error retrieving package version: {e}")
         return jsonify({"success": False, "message": "Internal server error"}), 500
@@ -401,7 +401,7 @@ def package_lock_info():
     # ... (package_lock_info logic as provided before - prioritizing library deps) ...
     logger.info("Request for package-lock equivalent received.")
     try: # Prioritize library's own dependencies
-        metadata = importlib.metadata.metadata("mbkauthe")
+        metadata = importlib.metadata.metadata("mbkauthepy")
         dependencies = metadata.get_all("Requires-Dist")
         return jsonify({
             "message": "Returning library's own dependencies",
@@ -410,8 +410,8 @@ def package_lock_info():
             "dependencies": dependencies or []
         })
     except importlib.metadata.PackageNotFoundError:
-         return jsonify({"success": False, "message": "Package 'mbkauthe' not found"}), 404
+         return jsonify({"success": False, "message": "Package 'mbkauthepy' not found"}), 404
     except Exception as e:
          logger.error(f"Error retrieving library dependencies: {e}")
          # Optionally fall through to try parsing project lock file, but often less useful
-         return jsonify({"success": False, "message": "Could not determine project dependencies for mbkauthe"}), 501
+         return jsonify({"success": False, "message": "Could not determine project dependencies for mbkauthepy"}), 501

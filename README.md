@@ -14,6 +14,7 @@
 ## 📚 Table of Contents
 
 - [✨ Features](#-features)
+- [🧠 Multi-language Support](#-multilanguage-support)
 - [📦 Installation](#-installation)
 - [🚀 Quickstart](#-quickstart)
 - [⚙️ Configuration (.env)](#️-configuration-env)
@@ -41,6 +42,34 @@
 | 🧠 Profile Data Access   | Built-in helper to fetch user profile details from DB                      |
 
 ---
+## 🧠 Multi-language Support
+
+This package is designed to work seamlessly with both **Python** and **JavaScript** applications.
+
+- The **JavaScript** version is available on [npm](https://www.npmjs.com/package/mbkauthe) as `mbkauthe`.
+- The **Python** version is available on [PyPI](https://pypi.org/project/mbkauthepy) as `mbkauthepy`.
+
+### Repositories:
+- **Python Version**: [mbkauthepy GitHub](https://github.com/42Wor/mbkauthepy)
+- **JavaScript Version**: [mbkauthe GitHub](https://github.com/MIbnEKhalid/mbkauthe)
+
+### Contact & Contributions:
+- **Maaz Waheed** (Python Version)
+  - GitHub: [@42Wor](https://github.com/42Wor)
+  - Email: [maaz.waheed@mbktechstudio.com](mailto:maaz.waheed@mbktechstudio.com) / [wwork4287@gmail.com](mailto:wwork4287@gmail.com)
+  
+- **Muhammad Bin Khalid** (JavaScript Version)
+  - GitHub: [@MIbnEKhalid](https://github.com/MIbnEKhalid)
+  - For questions or contributions:
+    - Support Page: [mbktechstudio.com/Support](http://mbktechstudio.com/Support)
+    - Email: [support@mbktechstudio.com](mailto:support@mbktechstudio.com) / [chmuhammadbinkhalid28@gmail.com](mailto:chmuhammadbinkhalid28@gmail.com)
+
+### Issues / PRs:
+We welcome issues and pull requests! Feel free to contribute or ask any questions.
+
+---
+
+**Note**: This project is developed and maintained by **Maaz Waheed** and **Muhammad Bin Khalid**.
 
 ## 📦 Installation
 
@@ -60,12 +89,11 @@ pip install -r requirements.txt
 pip install Flask Flask-Session psycopg2-binary python-dotenv bcrypt requests pyotp Flask-Cors SQLAlchemy
 ```
 
-### 3. Install mbkauthe
+### 3. Install mbkauthepy
 
 ```bash
-pip install -e ./mbkauthe  # Local dev
-# OR if published:
-# pip install mbkauthe
+pip install mbkauthepy
+
 ```
 
 ---
@@ -75,7 +103,7 @@ pip install -e ./mbkauthe  # Local dev
 ```python
 from flask import Flask, render_template, session
 from dotenv import load_dotenv
-from src.mbkauthe import configure_mbkauthe, validate_session
+from mbkauthepy import configure_mbkauthe, validate_session
 
 load_dotenv()
 
@@ -191,13 +219,6 @@ These are available by default after calling `configure_mbkauthe(app)`:
 
 ## 🗄️ Database Schema
 
-| Table     | Purpose                              |
-|-----------|--------------------------------------|
-| `Users`   | Stores core user account info        |
-| `sess`    | Tracks session info per user         |
-| `TwoFA`   | Stores 2FA TOTP secrets              |
-| `profiledata` | (Optional) Extended profile fields |
-
 👉 See [`docs/db.md`](docs/db.md) for schema & setup scripts.
 
 ---
@@ -230,6 +251,7 @@ See [LICENSE](./LICENSE) for full legal text.
 Developed by **Maaz Waheed**
 
 - GitHub: [@42Wor](https://github.com/42Wor)
+- Email: [maaz.waheed@mbktechstudio.com](mailto:maaz.waheed@mbktechstudio.com) / [wwork4287@gmail.com](mailto:wwork4287@gmail.com)
 - Issues / PRs welcome!
 
 ---
