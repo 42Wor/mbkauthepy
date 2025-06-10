@@ -14,7 +14,7 @@ load_dotenv()
 
 # --- Flask App Initialization ---
 app = Flask(__name__, instance_relative_config=False)
-# Set a secret key for Flask itself (needed for flash messages, separate from session secret)
+
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'a-different-secret-key-for-flask-flash')
 if app.config['SECRET_KEY'] == 'a-different-secret-key-for-flask-flash':
      print("WARNING: Using default FLASK_SECRET_KEY. Set a proper secret in .env for production.")
@@ -56,14 +56,12 @@ def index():
     username = session.get('user', {}).get('username') if is_logged_in else None
     return render_template('index.html', is_logged_in=is_logged_in, username=username)
 
-@app.route('/login', methods=['GET']) # Only GET needed, POST is API
+
+@app.route('/login', methods=['GET'])
 def login():
-    """Login page - shows form."""
     if 'user' in session:
         return redirect(url_for('home'))
-    # The actual login POST is handled by JavaScript calling the /mbkauthe/api/login endpoint.
     return render_template('login.html')
-
 @app.route('/home')
 def home():
     """Protected home page."""

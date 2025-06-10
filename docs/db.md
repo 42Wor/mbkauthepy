@@ -34,7 +34,6 @@
       "Active" BOOLEAN NOT NULL DEFAULT true,
       "HaveMailAccount" BOOLEAN NOT NULL DEFAULT false,
       "SessionId" TEXT,
-      "GuestRole" JSONB DEFAULT '{"allowPages": [""], "NotallowPages": [""]}'::jsonb
       "AllowedApps" JSONB DEFAULT '["mbkauthe"]'::jsonb
   );
   ```
@@ -42,17 +41,18 @@
 ### Session Table
 
 - **Columns:**
-
-  - `sid` (VARCHAR, primary key): Unique session identifier.
-  - `sess` (JSON): Session data stored in JSON format.
-  - `expire` (TIMESTAMP): Expiration timestamp for the session.
+- `sid` (VARCHAR, primary key): Unique session identifier.
+- `sess` (JSON): Session data stored in JSON format.
+- `expire` (TIMESTAMP): Expiration timestamp for the session.
+- `username` (TEXT, not null, foreign key): References `"Users"`\(`"UserName"`\), cascades on delete.
 
 - **Schema:**
   ```sql
   CREATE TABLE session (
           sid VARCHAR PRIMARY KEY,
           sess JSON NOT NULL,
-          expire TIMESTAMP NOT NULL
+          expire TIMESTAMP NOT NULL,
+          username TEXT NOT NULL REFERENCES "Users"("UserName") ON DELETE CASCADE
   );
   ```
 

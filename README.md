@@ -1,16 +1,18 @@
-# 🔐 mbkauthe (Python/Flask Version)
+# MBKAUTHEPY
 
-[![PyPI](https://img.shields.io/pypi/v/mbkauthe?color=blue)](https://pypi.org/project/mbkauthe/)
+<p align="center">
+  <img src="docs/log.png" alt="MBKAUTHEPY Logo" width="180">
+</p>
+
+[![PyPI](https://img.shields.io/pypi/v/mbkauthepy?color=blue)](https://pypi.org/project/mbkauthepy/)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
-[![Build](https://img.shields.io/github/actions/workflow/status/42Wor/mbkauthe/python-app.yml?label=build)](https://github.com/42Wor/mbkauthe/actions)
-[![Python Versions](https://img.shields.io/pypi/pyversions/mbkauthe)](https://pypi.org/project/mbkauthe/)
-[![Downloads](https://img.shields.io/pypi/dm/mbkauthe)](https://pypistats.org/packages/mbkauthe)
+[![Python Versions](https://img.shields.io/pypi/pyversions/mbkauthepy)](https://pypi.org/project/mbkauthepy/)
+[![Downloads](https://img.shields.io/pypi/dm/mbkauthepy)](https://pypistats.org/packages/mbkauthepy)
 
-> A fully featured, secure, and extensible authentication system for **Python Flask** applications.  
-> Originally ported from the Node.js version to provide **multi-language support** for full-stack apps.
+> **mbkauthepy** is a fully featured, secure, and extensible authentication system for **Python Flask** applications.  
+> Ported from the Node.js version to provide seamless **multi-language support** for full-stack apps.
 
 ---
-
 ## 📚 Table of Contents
 
 - [✨ Features](#-features)
@@ -85,8 +87,6 @@ source venv/bin/activate  # Linux/macOS
 
 ```bash
 pip install -r requirements.txt
-# OR manually:
-pip install Flask Flask-Session psycopg2-binary python-dotenv bcrypt requests pyotp Flask-Cors SQLAlchemy
 ```
 
 ### 3. Install mbkauthepy
@@ -206,14 +206,12 @@ data = get_user_data("johndoe", ["FullName", "email"])
 
 These are available by default after calling `configure_mbkauthe(app)`:
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/mbkauthe/api/login` | Authenticate and create session |
-| POST | `/mbkauthe/api/logout` | Terminate current session |
+| Method | Endpoint                             | Description |
+|--------|--------------------------------------|-------------|
+| POST | `/mbkauthe/api/login`                | Authenticate and create session |
+| POST | `/mbkauthe/api/logout`               | Terminate current session |
 | POST | `/mbkauthe/api/terminateAllSessions` | Clears all sessions (admin only) |
-| GET  | `/mbkauthe/version` | Current package version |
-| GET  | `/mbkauthe/package` | Metadata from installed package |
-| GET  | `/mbkauthe/package-lock` | Dependency info (experimental) |
+| GET  | `/mbkauthe/i` or `/mbkauthe/info`    | Current package version or metadata from the installed package |
 
 ---
 
@@ -229,14 +227,7 @@ These are available by default after calling `configure_mbkauthe(app)`:
 - ✅ Always use long random `SESSION_SECRET_KEY`.
 - 🔒 Use HTTPS in deployment (`IS_DEPLOYED: "true"`).
 - 🚫 Avoid plaintext passwords outside dev/testing.
-
-Need to hash a password?
-
-```python
-import bcrypt
-hashed = bcrypt.hashpw(b"mypassword", bcrypt.gensalt())
-```
-
+ > **Note:** Encrypted password support is under development. Stay tuned for updates!
 ---
 
 ## 📜 License

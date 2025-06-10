@@ -1,7 +1,7 @@
 # mbkauthe/routes.py (Full file with conditional password check)
 
 import logging
-from flask import Blueprint, request, jsonify, session, make_response, current_app, render_template
+from flask import Blueprint, request, jsonify, session, make_response, current_app, render_template,render_template_string
 import psycopg2
 import psycopg2.extras
 import bcrypt # <-- Re-add bcrypt import
@@ -66,7 +66,7 @@ def login():
         return jsonify({"success": False, "message": "Invalid request body (expecting JSON)"}), 400
 
     username = data.get("username")
-    password = data.get("password") # User submitted password (plaintext)
+    password = data.get("password")
     token_2fa = data.get("token")
     recaptcha_response = data.get("recaptcha")
 
@@ -78,7 +78,6 @@ def login():
 
     # --- reCAPTCHA Verification ---
     bypass_users = config.get("BypassUsers", [])
-    # Use .get for boolean flags with a default
     if config.get("RECAPTCHA_Enabled", False) and username not in bypass_users:
         if not recaptcha_response:
             logger.warning("Login failed: Missing reCAPTCHA token")
@@ -103,7 +102,6 @@ def login():
         except requests.exceptions.RequestException as e:
             logger.error(f"Error during reCAPTCHA verification: {e}")
             return jsonify({"success": False, "message": "reCAPTCHA check failed. Please try again."}), 500
-    # --- End reCAPTCHA ---
 
     # --- User Authentication ---
     conn = None
@@ -113,7 +111,7 @@ def login():
             # Fetch user data
             user_query = """
                 SELECT u.id, u."UserName", u."Password", u."Role", u."Active", u."AllowedApps",
-                       tfa."TwoFAStatus", tfa."TwoFASecret"
+                       tfa."TwoFAStatus", tfa."TwoFASecret", u."SessionId"
                 FROM "Users" u
                 LEFT JOIN "TwoFA" tfa ON u."UserName" = tfa."UserName"
                 WHERE u."UserName" = %s
@@ -125,56 +123,39 @@ def login():
                 logger.warning(f"Login failed: Username does not exist: {username}")
                 return jsonify({"success": False, "message": "Incorrect Username Or Password"}), 401
 
-            # --- !!! CONDITIONAL PASSWORD CHECK !!! ---
-            stored_password = user["Password"] # Password from DB (could be hash or plaintext)
-            use_encryption = config.get("EncryptedPassword", False) # Get flag from config
+            # --- Password Check ---
+            stored_password = user["Password"]
+            use_encryption = config.get("EncryptedPassword", False)
             password_match = False
 
             logger.info(f"Password check mode: {'Encrypted' if use_encryption else 'Plaintext'}")
 
             if use_encryption:
-                # --- Encrypted (bcrypt) Check ---
                 try:
                     password_bytes = password.encode('utf-8')
-                    # Ensure stored password is bytes if it's a string hash from DB
                     stored_password_bytes = stored_password.encode('utf-8') if isinstance(stored_password, str) else stored_password
-
-                    # Perform the bcrypt check
                     password_match = bcrypt.checkpw(password_bytes, stored_password_bytes)
-
                     if password_match:
                          logger.info("Encrypted password matches!")
                     else:
                          logger.warning(f"Encrypted password check failed for {username}")
-
                 except ValueError as e:
-                    # This specific error often means the stored hash is invalid (e.g., plaintext stored when hash expected)
                     logger.error(f"Error comparing password for {username}: {e}. Check password hash format in DB.")
-                    # Return 605 ONLY if encryption was attempted and failed due to format
                     return jsonify({"success": False, "errorCode": 605, "message": "Internal Server Error during auth (bcrypt format error)"}), 500
                 except Exception as e:
-                    # Catch other potential bcrypt errors
                     logger.error(f"Unexpected error during encrypted password check for {username}: {e}", exc_info=True)
                     return jsonify({"success": False, "errorCode": 605, "message": "Internal Server Error during auth (bcrypt unexpected error)"}), 500
             else:
-                # --- Plaintext Check ---
                 logger.info(f"Performing PLAINTEXT password check for {username}")
-                # Direct string comparison
                 password_match = (password == stored_password)
                 if password_match:
                      logger.info("Plaintext password matches!")
                 else:
                      logger.warning(f"Plaintext password check failed for {username}.")
-                     # Optional: Log passwords only in secure debug environments if absolutely needed
-                     # logger.debug(f"Provided: '{password}', Stored: '{stored_password}'")
 
-            # --- Check Result (Common for both methods) ---
             if not password_match:
                  logger.warning(f"Login failed: Incorrect password for username: {username}")
-                 # Use 603 for general incorrect password after check
                  return jsonify({"success": False, "errorCode": 603, "message": "Incorrect Username Or Password"}), 401
-            # --- !!! END CONDITIONAL PASSWORD CHECK !!! ---
-
 
             # --- Account Status Check ---
             if not user["Active"]:
@@ -185,15 +166,14 @@ def login():
             if user["Role"] != "SuperAdmin":
                 allowed_apps = user.get("AllowedApps") or []
                 app_name = config.get("APP_NAME", "UNKNOWN_APP")
-                if app_name not in allowed_apps:
+            if app_name.lower() not in [a.lower() for a in allowed_apps]:
                     logger.warning(f"Login failed: User '{username}' not authorized for app '{app_name}'. Allowed: {allowed_apps}")
                     return jsonify({"success": False, "message": f"You Are Not Authorized To Use The Application \"{app_name}\""}), 403
 
             # --- Two-Factor Authentication (2FA) Check ---
             if config.get("MBKAUTH_TWO_FA_ENABLE", False):
-                two_fa_status = user.get("TwoFAStatus", False) # DB stores BOOLEAN
+                two_fa_status = user.get("TwoFAStatus", False)
                 two_fa_secret = user.get("TwoFASecret")
-
                 if two_fa_status:
                     if not token_2fa:
                         logger.warning(f"Login failed: 2FA code required but not provided for {username}")
@@ -203,19 +183,25 @@ def login():
                          return jsonify({"success": False, "message": "2FA configuration error"}), 500
                     try:
                         totp = pyotp.TOTP(two_fa_secret)
-                        if not totp.verify(token_2fa):
+                        if not totp.verify(token_2fa, valid_window=1):
                             logger.warning(f"Login failed: Invalid 2FA code for username: {username}")
                             return jsonify({"success": False, "message": "Invalid 2FA code"}), 401
                         logger.info(f"2FA verification successful for {username}")
                     except Exception as e:
                          logger.error(f"Error during 2FA verification for {username}: {e}")
                          return jsonify({"success": False, "message": "Error verifying 2FA code"}), 500
-            # --- End 2FA Check ---
 
-
-            # --- Login Success: Generate Session ---
+            # --- Session Management ---
             session_id = secrets.token_hex(32)
             logger.info(f"Generated session ID for username: {username}")
+
+            # Delete old session record for this user if using a session table (optional)
+            if user.get("SessionId"):
+                try:
+                    cur.execute('DELETE FROM "session" WHERE username = %s', (user["UserName"],))
+                    logger.info(f"Deleted old session record for user: {username}")
+                except Exception as e:
+                    logger.warning(f"Could not delete old session record for user {username}: {e}")
 
             # Update SessionId in the database
             update_query = 'UPDATE "Users" SET "SessionId" = %s WHERE "id" = %s'
@@ -232,6 +218,13 @@ def login():
             }
             session.permanent = True
 
+            # Optionally update username in session table if using Flask-Session SQLAlchemy
+            try:
+                cur.execute('UPDATE "session" SET username = %s WHERE sid = %s', (user["UserName"], session_id))
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Failed to update username in session table: {e}")
+
             logger.info(f"User '{username}' logged in successfully (Password Check Mode: {'Encrypted' if use_encryption else 'Plaintext'})")
 
             # Prepare response
@@ -241,7 +234,6 @@ def login():
                 "sessionId": session_id
             }
             resp = make_response(jsonify(response_data), 200)
-            # Cookies are typically set by the after_request hook now
             return resp
 
     except ConnectionError as e:
@@ -259,10 +251,6 @@ def login():
         if conn:
             release_db_connection(conn)
 
-
-# --- Other Routes (/logout, /terminateAllSessions, /package, /version, /package-lock) ---
-# Keep the rest of the routes from the previous version of routes.py here
-# Ensure they also use `current_app.config["MBKAUTHE_CONFIG"]` where needed
 
 @mbkauthe_bp.route("/api/logout", methods=["POST"])
 @validate_session # Ensure user is logged in to log out
@@ -309,9 +297,8 @@ def logout():
 
 
 @mbkauthe_bp.route("/api/terminateAllSessions", methods=["POST"])
-@authenticate_token # Use the token authentication middleware
+@authenticate_token
 def terminate_all_sessions():
-    # ... (terminateAllSessions logic as provided before) ...
     logger.warning("Received request to terminate all user sessions.")
     conn = None
     try:
@@ -321,97 +308,294 @@ def terminate_all_sessions():
             users_updated = cur.rowcount
             logger.info(f"Cleared SessionId for {users_updated} users.")
 
-            config = current_app.config["MBKAUTHE_CONFIG"] # Get config for session details
-            session_table = config.get("SESSION_SQLALCHEMY_TABLE", "session")
-            session_type = config.get("SESSION_TYPE")
-
-            if session_type == "sqlalchemy":
-                 # Use DELETE for safety unless TRUNCATE is explicitly desired and understood
-                 cur.execute(f'DELETE FROM "{session_table}"')
-                 # cur.execute(f'TRUNCATE TABLE "{session_table}" RESTART IDENTITY') # More aggressive
-                 logger.info(f"Cleared session table '{session_table}'.")
-            elif session_type == "filesystem":
-                 session_dir = current_app.config.get("SESSION_FILE_DIR", os.path.join(os.getcwd(), 'flask_session'))
-                 logger.warning(f"Terminating filesystem sessions - deleting files in {session_dir}")
-                 try:
-                      for filename in os.listdir(session_dir):
-                           file_path = os.path.join(session_dir, filename)
-                           if os.path.isfile(file_path):
-                                os.unlink(file_path)
-                      logger.info("Filesystem session files deleted.")
-                 except Exception as fs_err:
-                      logger.error(f"Error deleting filesystem session files: {fs_err}")
-            else:
-                 logger.warning(f"Session termination for backend type '{session_type}' needs specific implementation (e.g., Redis FLUSHDB/DEL).")
+            cur.execute('DELETE FROM "session"')
+            logger.info('Deleted all records from "session" table.')
 
         conn.commit()
-        session.clear() # Clear current request's session
+        # Destroy the current session
+        session.clear()
 
         resp = make_response(jsonify({
             "success": True,
             "message": "All sessions terminated successfully"
         }), 200)
         cookie_options = get_cookie_options()
+        resp.delete_cookie("mbkauthe.sid", domain=cookie_options.get('domain'), path=cookie_options.get('path'))
         resp.delete_cookie("sessionId", domain=cookie_options.get('domain'), path=cookie_options.get('path'))
         resp.delete_cookie("username", domain=cookie_options.get('domain'), path=cookie_options.get('path'))
-        logger.warning("All user sessions terminated successfully.")
+        logger.info("All sessions terminated successfully")
         return resp
 
     except (Exception, psycopg2.DatabaseError) as e:
-        logger.error(f"Error during terminateAllSessions: {e}", exc_info=True)
-        if conn: conn.rollback()
-        return jsonify({"success": False, "message": "Internal Server Error during session termination"}), 500
+        logger.error(f"Database query error during session termination: {e}", exc_info=True)
+        if conn:
+            conn.rollback()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
     finally:
-        if conn: release_db_connection(conn)
+        if conn:
+            release_db_connection(conn)
 
+@mbkauthe_bp.route("/info", methods=["GET"])
+@mbkauthe_bp.route("/i", methods=["GET"])
+def mbkauthe_info():
+    package_name = "mbkauthepy"
+    config = current_app.config.get("MBKAUTHE_CONFIG", {})
 
-# --- Informational Endpoints ---
-@mbkauthe_bp.route("/package", methods=["GET"])
-def package_info():
-    # ... (package_info logic as provided before) ...
+    # Get current version
     try:
-        metadata = importlib.metadata.metadata("mbkauthe")
-        package_data = {key: metadata[key] for key in metadata.keys()}
-        return jsonify(package_data)
+        version = importlib.metadata.version(package_name)
     except importlib.metadata.PackageNotFoundError:
-        logger.error("Could not find metadata for 'mbkauthe' package.")
-        return jsonify({"success": False, "message": "Package 'mbkauthe' not found"}), 404
-    except Exception as e:
-        logger.error(f"Error retrieving package metadata: {e}")
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        version = "Unknown"
+        logger.warning(f"Package {package_name} not found")
 
-
-@mbkauthe_bp.route("/version", methods=["GET"])
-@mbkauthe_bp.route("/v", methods=["GET"])
-def version_info():
-    # ... (version_info logic as provided before) ...
+    # Get latest version from PyPI
+    latest_version = None
     try:
-        version = importlib.metadata.version("mbkauthepy")
-        return jsonify({"version": version})
-    except importlib.metadata.PackageNotFoundError:
-        logger.error("Could not find version for 'mbkauthepy' package.")
-        return jsonify({"success": False, "message": "Package 'mbkauthepy' not found"}), 404
-    except Exception as e:
-        logger.error(f"Error retrieving package version: {e}")
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        resp = requests.get(
+            f"https://pypi.org/pypi/{package_name}/json",
+            timeout=5
+        )
+        resp.raise_for_status()
+        latest_version = resp.json().get("info", {}).get("version")
+    except requests.RequestException as e:
+        logger.warning(f"Failed to fetch latest version from PyPI: {e}")
 
-
-@mbkauthe_bp.route("/package-lock", methods=["GET"])
-def package_lock_info():
-    # ... (package_lock_info logic as provided before - prioritizing library deps) ...
-    logger.info("Request for package-lock equivalent received.")
-    try: # Prioritize library's own dependencies
-        metadata = importlib.metadata.metadata("mbkauthepy")
-        dependencies = metadata.get_all("Requires-Dist")
-        return jsonify({
-            "message": "Returning library's own dependencies",
-            "name": metadata.get("Name"),
-            "version": metadata.get("Version"),
-            "dependencies": dependencies or []
-        })
+    # Get package metadata
+    try:
+        metadata = importlib.metadata.metadata(package_name)
+        package_json = {k: str(metadata[k]) for k in metadata.keys()}
     except importlib.metadata.PackageNotFoundError:
-         return jsonify({"success": False, "message": "Package 'mbkauthepy' not found"}), 404
+        package_json = {}
+        logger.warning(f"Failed to fetch metadata for {package_name}")
+
+    # Get dependencies
+    try:
+        dependencies = metadata.get_all("Requires-Dist", []) if metadata else []
     except Exception as e:
-         logger.error(f"Error retrieving library dependencies: {e}")
-         # Optionally fall through to try parsing project lock file, but often less useful
-         return jsonify({"success": False, "message": "Could not determine project dependencies for mbkauthepy"}), 501
+        dependencies = []
+        logger.warning(f"Failed to fetch dependencies: {e}")
+
+    # Configuration info
+    info = {
+        "APP_NAME": config.get("APP_NAME", "N/A"),
+        "RECAPTCHA_Enabled": config.get("RECAPTCHA_Enabled", False),
+        "MBKAUTH_TWO_FA_ENABLE": config.get("MBKAUTH_TWO_FA_ENABLE", False),
+        "COOKIE_EXPIRE_TIME": config.get("COOKIE_EXPIRE_TIME", "N/A"),
+        "IS_DEPLOYED": config.get("IS_DEPLOYED", False),
+        "DOMAIN": config.get("DOMAIN", "N/A"),
+    }
+
+    # HTML template for Version and Configuration Dashboard with modern styling and accessibility
+    template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Version and Configuration Dashboard</title>
+    <style>
+        :root {
+                --bg-color: #18181b;
+                --text-color: #f3f4f6;
+                --container-bg: linear-gradient(135deg, #232946 60%, #393e46 100%);
+            --accent-color: #7b2cbf;
+            --accent-hover: #9d4edd;
+            --label-color: #b0b0b0;
+                --json-bg: #232946;
+            --json-text: #a3e635;
+            --success-color: #00cc00;
+            --warning-color: #ff9500;
+            --error-color: #ff3d3d;
+                --border-radius: 14px;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+                font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+                justify-content: center;
+                padding: 24px;
+        }
+        .container {
+                max-width: 900px;
+                width: 100%;
+            background: var(--container-bg);
+                border-radius: var(--border-radius);
+                padding: 2.5rem 2rem;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+                animation: fadeIn 0.5s;
+        }
+        h1 {
+            color: var(--accent-color);
+                font-size: 2.3rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            text-transform: uppercase;
+                letter-spacing: 1.5px;
+            background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .info-section {
+            margin-bottom: 2rem;
+                border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+                padding: 1.5rem 1.2rem;
+                background: rgba(35,35,70,0.7);
+                transition: box-shadow 0.3s;
+        }
+            .info-section:focus-within, .info-section:hover {
+                box-shadow: 0 4px 16px rgba(123,44,191,0.18);
+        }
+        h2 {
+            color: var(--text-color);
+                font-size: 1.35rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--accent-color);
+                padding-bottom: 0.4rem;
+        }
+        .info-label {
+            font-weight: 600;
+            color: var(--label-color);
+                min-width: 180px;
+            display: inline-block;
+                font-size: 1rem;
+        }
+        .info-row {
+            display: flex;
+            align-items: center;
+                margin-bottom: 0.7rem;
+                padding: 0.4rem 0.2rem;
+            border-radius: 6px;
+                transition: background 0.2s;
+        }
+        .info-row:hover {
+                background: rgba(255,255,255,0.04);
+        }
+        .json-container {
+            background: var(--json-bg);
+            border-radius: 8px;
+                padding: 1.1rem;
+                font-family: 'Fira Code', 'Consolas', monospace;
+                font-size: 0.97rem;
+            color: var(--json-text);
+            overflow-x: auto;
+            white-space: pre-wrap;
+                max-height: 260px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-color) var(--json-bg);
+        }
+        .json-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .json-container::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 4px;
+        }
+        .status-up-to-date { 
+            color: var(--success-color);
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+        .status-update-available { 
+            color: var(--error-color);
+            font-weight: 600;
+        }
+        .status-unknown { 
+            color: var(--warning-color);
+            font-weight: 600;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            .container {
+                    padding: 1.2rem 0.5rem;
+            }
+            h1 {
+                    font-size: 1.5rem;
+            }
+            .info-label {
+                min-width: 100%;
+                    margin-bottom: 0.2rem;
+            }
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+        <div class="container" role="main">
+        <h1>Version and Configuration Dashboard</h1>
+            <div class="info-section" tabindex="0">
+            <h2>Version Information</h2>
+            <div class="info-row">
+                <span class="info-label">Current Version:</span> 
+                <span>{{ version | e }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Latest Version:</span> 
+                <span>{{ latest_version or 'Could not fetch latest version' | e }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Status:</span>
+                    <span class="{% if latest_version and version == latest_version %}status-up-to-date{% elif latest_version %}status-update-available{% else %}status-unknown{% endif %}">
+                    {% if latest_version and version == latest_version %}
+                        Up to date
+                    {% elif latest_version %}
+                        Update available
+                    {% else %}
+                        Unknown
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+            <div class="info-section" tabindex="0">
+            <h2>Configuration Information</h2>
+            {% for key, value in info.items() %}
+                <div class="info-row">
+                    <span class="info-label">{{ key | e }}:</span>
+                    <span>{{ value | e }}</span>
+                </div>
+            {% endfor %}
+        </div>
+            <div class="info-section" tabindex="0">
+            <h2>Package Metadata</h2>
+            <div class="json-container">
+                <pre>{{ package_json | tojson(indent=2) | e }}</pre>
+            </div>
+        </div>
+            <div class="info-section" tabindex="0">
+            <h2>Dependencies</h2>
+            <div class="json-container">
+                <pre>{{ dependencies | tojson(indent=2) | e }}</pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    return render_template_string(
+        template,
+        version=version,
+        latest_version=latest_version,
+        info=info,
+        package_json=package_json,
+        dependencies=dependencies
+    )

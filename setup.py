@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="mbkauthepy",  # Name of your package
-    version="1.3.0",  # Current version
+    version="1.4.0",  # Current version
     author="Maaz.waheed",
     author_email="maaz.waheed@mbktechstudio.com",
     description="A fully featured, secure, and extensible authentication system for Python Flask applications.",
