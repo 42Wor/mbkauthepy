@@ -52,8 +52,7 @@ dependencies = [
     "Flask-Cors>=4.0", # If CORS is integral
     "SQLAlchemy>=1.4", # Needed if using sqlalchemy session type internally
     "importlib-metadata; python_version<'3.10'", # Conditional dependency
-    # Add Werkzeug explicitly if you rely on specific versions beyond Flask's requirement
-    # "Werkzeug>=2.0",
+     "pybars3",
 ]
 
 # --- Project URLs ---
