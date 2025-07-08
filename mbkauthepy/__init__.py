@@ -22,8 +22,8 @@ __all__ = [
     "mbkauthe_bp",          # Export the blueprint
     "configure_mbkauthe",   # Export the setup function
     # "db_pool",           # REMOVED - No global pool to export
-    "get_cookie_options",   # Export utility if needed
-    "CustomDbSessionInterface" # Export the custom session interface class
+    "get_cookie_options"
+
 ]
 
 
@@ -85,6 +85,3 @@ from .middleware import (
 from .routes import mbkauthe_bp # Ensure blueprint is available for export
 # from .db import db_pool # REMOVED pool export
 from .utils import get_cookie_options # Export utils if needed
-
-# CORRECTED IMPORT: Use relative import for modules within the same package
-from .custom_session_interface import CustomDbSessionInterface

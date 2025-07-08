@@ -39,12 +39,6 @@ def load_config():
     for key in required_keys:
         if key not in config or config[key] is None:
             raise ConfigError(f"Missing required configuration key: mbkautheVar.{key}")
-
-    # Specific validation for sqlalchemy session type
-    if config.get("SESSION_TYPE") == "sqlalchemy" and "SESSION_SQLALCHEMY_TABLE" not in config:
-        raise ConfigError(
-            "Missing required configuration key: mbkautheVar.SESSION_SQLALCHEMY_TABLE (required when SESSION_TYPE is 'sqlalchemy')")
-
     # Convert string booleans to actual booleans
     config["IS_DEPLOYED"] = str(config.get("IS_DEPLOYED", "false")).lower() == 'true'
     config["MBKAUTH_TWO_FA_ENABLE"] = str(config.get("MBKAUTH_TWO_FA_ENABLE", "false")).lower() == 'true'
@@ -117,7 +111,6 @@ def configure_flask_app(app):
     # --- Specific config for SQLAlchemy session backend ---
     if MBKAUTHE_CONFIG["SESSION_TYPE"] == "sqlalchemy":
         app.config['SQLALCHEMY_DATABASE_URI'] = MBKAUTHE_CONFIG['LOGIN_DB']
-        app.config['SESSION_SQLALCHEMY_TABLE'] = MBKAUTHE_CONFIG['SESSION_SQLALCHEMY_TABLE']
         # Prevent Flask-SQLAlchemy from tracking modifications, as it's a performance overhead
         # and not needed for the session table.
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

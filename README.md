@@ -1,7 +1,7 @@
 # MBKAUTHEPY
 
 <p align="center">
-  <img src="docs/log.png" alt="MBKAUTHEPY Logo" width="180">
+  <img src="https://raw.githubusercontent.com/42Wor/mbkauthepy/refs/heads/main/docs/log.png" alt="MBKAUTHEPY Logo" width="180">
 </p>
 
 [![PyPI](https://img.shields.io/pypi/v/mbkauthepy?color=blue)](https://pypi.org/project/mbkauthepy/)
@@ -137,18 +137,14 @@ if __name__ == '__main__':
 FLASK_SECRET_KEY=my-flask-secret
 
 mbkautheVar='{
-  "APP_NAME": "MyApp",
-  "RECAPTCHA_Enabled": "false",
-  "SESSION_SECRET_KEY": "super-long-random-secret",
-  "IS_DEPLOYED": "false",
-  "LOGIN_DB": "postgresql://user:pass@host:5432/mydb",
-  "MBKAUTH_TWO_FA_ENABLE": "false",
-  "COOKIE_EXPIRE_TIME": "7",
-  "DOMAIN": "localhost",
-  "Main_SECRET_TOKEN": "internal-api-secret-token",
-  "SESSION_TYPE": "sqlalchemy",
-  "SESSION_SQLALCHEMY_TABLE": "session",
-  "EncryptedPassword": "true"
+    "APP_NAME": "MBKAUTH_PYTHON_DEMO",
+    "IS_DEPLOYED": "false",
+    "LOGIN_DB": "postgresql://username:password@host:port/database",
+    "MBKAUTH_TWO_FA_ENABLE": "false",
+    "COOKIE_EXPIRE_TIME": "2", # In days
+    "DOMAIN": "mbktechstudio.com", # Use your actual domain in production
+    "Main_SECRET_TOKEN": "your-secret-token-for-terminate-api", # Added for terminateAllSessions auth
+    "loginRedirectURL": "/"
 }'
 ```
 
@@ -206,12 +202,14 @@ data = get_user_data("johndoe", ["FullName", "email"])
 
 These are available by default after calling `configure_mbkauthe(app)`:
 
-| Method | Endpoint                             | Description |
-|--------|--------------------------------------|-------------|
-| POST | `/mbkauthe/api/login`                | Authenticate and create session |
-| POST | `/mbkauthe/api/logout`               | Terminate current session |
-| POST | `/mbkauthe/api/terminateAllSessions` | Clears all sessions (admin only) |
-| GET  | `/mbkauthe/i` or `/mbkauthe/info`    | Current package version or metadata from the installed package |
+| Method | Endpoint                                                               | Description                                                    |
+|--------|------------------------------------------------------------------------|----------------------------------------------------------------|
+| POST   | `/mbkauthe/api/login`                                                  | Authenticate and create session                                |
+| POST   | `/mbkauthe/api/logout`                                                 | Terminate current session                                      |
+| POST   | `/mbkauthe/api/terminateAllSessions`                                   | Clears all sessions (admin only)                               |
+| GET    | `/mbkauthe/i` or `/mbkauthe/info` or  `mbkauthe.mbkauthe_info`         | Current package version or metadata from the installed package |
+| GET    | `mbkauthe.login_page` or `/mbkauthe/login`                             | login page in package                                          |
+
 
 ---
 

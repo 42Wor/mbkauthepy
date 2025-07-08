@@ -198,8 +198,17 @@ def login():
             logger.info(f"Generated session ID for username: {username}")
 
 
+
             update_query = 'UPDATE "session" SET username = %s WHERE sid = %s'
-            cur.execute(update_query, ( str(user['UserName']),session_id))
+            logger.info(f"{str(user['UserName'])},{session_id})")
+            try:
+                cur.execute(update_query, (str(user['UserName']), session_id))
+                if cur.rowcount == 0:
+                    logger.error(f"No session found for ID: {session_id}")
+                conn.commit()
+            except Exception as e:
+                logger.error(f"Update failed: {str(e)}")
+
 
             session.clear()
             session['user'] = {
@@ -227,41 +236,71 @@ def login():
 @mbkauthe_bp.route("/api/logout", methods=["POST"])
 @validate_session
 def logout():
-    if 'user' in session:
+    conn = None
+    try:
         user_info = session.get('user', {})
+        username = user_info.get('username', 'unknown')
         user_id = user_info.get('id')
-        username = user_info.get('username', 'N/A')
-        conn = None
-        try:
-            if user_id:
+
+        # Initialize response
+        resp = make_response(jsonify({
+            "success": True,
+            "message": "Logout successful"
+        }), 200)
+
+        # Clear Flask session
+        session.clear()
+
+        # Update database
+        if user_id:
+            try:
                 conn = get_db_connection()
                 with conn.cursor() as cur:
-                    cur.execute('UPDATE "Users" SET "SessionId" = NULL WHERE "id" = %s', (user_id,))
+                    cur.execute(
+                        'UPDATE "Users" SET "SessionId" = NULL WHERE "id" = %s',
+                        (user_id,)
+                    )
                 conn.commit()
+            except psycopg2.Error as e:
+                logger.error(f"Database error during logout for {username}: {e}")
+                if conn:
+                    conn.rollback()
 
-            session.clear()
+        # Get domain from config if exists
+        domain = current_app.config.get('MBKAUTHE_CONFIG', {}).get('DOMAIN')
 
-            resp = make_response(jsonify({"success": True, "message": "Logout successful"}), 200)
-            cookie_options = get_cookie_options()
-            domain = cookie_options.get('domain')
-            path = cookie_options.get('path', '/')
-            resp.delete_cookie("sessionId", domain=domain, path=path)
-            resp.delete_cookie("username", domain=domain, path=path)
-            resp.delete_cookie(current_app.config.get('SESSION_COOKIE_NAME', 'session'), domain=domain, path=path)
+        # Clear cookies properly
+        cookies_to_clear = [
+            "sessionId",
+            "username",
+            current_app.config.get('SESSION_COOKIE_NAME', 'session')
+        ]
 
-            logger.info(f"User '{username}' logged out successfully.")
-            return resp
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f"Error during logout for {username}: {e}", exc_info=True)
-            if conn:
-                conn.rollback()
-            return jsonify({"success": False, "message": "Internal Server Error during logout"}), 500
-        finally:
-            if conn:
-                release_db_connection(conn)
-    else:
-        return jsonify({"success": False, "message": "Not logged in"}), 400
+        for cookie_name in cookies_to_clear:
+            if domain:
+                resp.delete_cookie(
+                    cookie_name,
+                    path='/',
+                    domain=domain
+                )
+            else:
+                resp.delete_cookie(
+                    cookie_name,
+                    path='/'
+                )
 
+        logger.info(f"Successful logout for user: {username}")
+        return resp
+
+    except Exception as e:
+        logger.critical(f"Critical error during logout: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": "Internal Server Error"
+        }), 500
+    finally:
+        if conn:
+            release_db_connection(conn)
 
 @mbkauthe_bp.route("/api/terminateAllSessions", methods=["POST"])
 @authenticate_token

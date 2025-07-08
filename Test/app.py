@@ -7,7 +7,6 @@ from flask import (
 )
 from dotenv import load_dotenv
 from mbkauthepy import configure_mbkauthe
-from mbkauthepy import CustomDbSessionInterface
 
 # Load environment variables from .env file FIRST
 load_dotenv()
@@ -37,11 +36,6 @@ except Exception as e:
 try:
     # Get the table name from the config mbkauthe loaded into app.config
     mbk_config = app.config.get("MBKAUTHE_CONFIG", {})
-    # Use SESSION_SQLALCHEMY_TABLE key, default to 'session' if not found
-    session_table_name = mbk_config.get("SESSION_SQLALCHEMY_TABLE", "session")
-
-    app.session_interface = CustomDbSessionInterface(table=session_table_name)
-    app.logger.info(f"Custom session interface initialized for table '{session_table_name}'.")
 except Exception as e:
      app.logger.error(f"FATAL: Failed to initialize custom session interface: {e}", exc_info=True)
      print(f"FATAL: Failed to initialize custom session interface: {e}")
