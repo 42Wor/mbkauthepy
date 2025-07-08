@@ -33,7 +33,7 @@
                 <span style="color: white; padding: 14px 10px; display: inline-block;">Welcome, {{ session['user']['username'] }}!</span>
                 <a href="#" id="logoutLink">Logout</a>
             {% else %}
-                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('mbkauthe.login_page') }}">Login</a>
             {% endif %}
         </div>
     </div>
@@ -75,7 +75,7 @@
                     const data = await response.json();
                     if (response.ok && data.success) {
                         console.log('Logout successful');
-                        window.location.href = "{{ url_for('login') }}"; // Redirect to login page
+                        window.location.href = "{{ url_for('mbkauthe.login_page') }}"; // Redirect to login page
                     } else {
                         console.error('Logout failed:', data.message);
                         alert(`Logout failed: ${data.message || 'Unknown error'}`);
@@ -93,7 +93,7 @@
          document.addEventListener('DOMContentLoaded', () => {
             const loggedInUsername = getCookie('username');
             const userSpan = document.querySelector('.navbar .right span');
-            const loginLink = document.querySelector('.navbar .right a[href="{{ url_for('login') }}"]'); // Corrected selector // Corrected selector
+            const loginLink = document.querySelector('.navbar .right a[href="{{ url_for('mbkauthe.login_page') }}"]'); // Corrected selector // Corrected selector
 
             if (loggedInUsername) {
                 if (userSpan) userSpan.textContent = `Welcome, ${decodeURIComponent(loggedInUsername)}!`;

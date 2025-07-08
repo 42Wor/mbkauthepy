@@ -186,13 +186,13 @@ class CustomDbSessionInterface(SessionInterface):
             conn = get_db_connection()
             with conn.cursor() as cur:
                 upsert_sql = f"""
-                    INSERT INTO "{self.table}" (sid, sess, expire)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO "{self.table}" (sid, sess, expire,username)
+                    VALUES (%s, %s, %s,%s)
                     ON CONFLICT (sid) DO UPDATE SET
                         sess = EXCLUDED.sess,
                         expire = EXCLUDED.expire;
                 """
-                cur.execute(upsert_sql, (session.sid, session_data_json, db_expires))
+                cur.execute(upsert_sql, (session.sid, session_data_json, db_expires,session.get('username')))
             conn.commit()
             logger.debug(f"Saved session to DB: {session.sid}")
 

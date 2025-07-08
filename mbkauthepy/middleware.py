@@ -1,6 +1,6 @@
 import logging
 from functools import wraps
-from flask import session, request, jsonify, render_template, current_app, make_response, abort
+from flask import session,redirect,url_for, request, jsonify, render_template, current_app, make_response, abort
 import psycopg2
 import psycopg2.extras # For dictionary cursor
 from .db import get_db_connection, release_db_connection
@@ -117,7 +117,9 @@ def validate_session(f):
 
         except (Exception, psycopg2.DatabaseError) as e:
             logger.error(f"validate_session: Database error: {e}")
-            return render_template("Error/Error.html", error="Internal Server Error during session validation."), 500
+            next_url = request.full_path if request.args else request.path
+            return redirect(url_for('mbkauthe.login_page', next=next_url))
+
         finally:
             if conn:
                 release_db_connection(conn)

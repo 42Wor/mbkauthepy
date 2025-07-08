@@ -67,7 +67,7 @@ def home():
         # Redirect to login, passing the current page as 'next'
         # Use request.url or request.full_path depending on desired behavior
         next_url = request.full_path if request.args else request.path
-        return redirect(url_for('login', next=next_url))
+        return redirect(url_for('mbkauthe.login_page', next=next_url))
 
     # If logged in, get username and render home page
     user_info = session.get('user', {})
@@ -75,48 +75,6 @@ def home():
     return render_template('home.html', username=username)
 
 
-@app.errorhandler(500)
-def handle_internal_server_error(error):
-    """
-    Catches unhandled exceptions and renders a custom 500 error page.
-    This is the Flask equivalent of the Express error-handling middleware.
-    """
-    # 1. Log the full error stack for debugging purposes
-    #    This is equivalent to `console.error(err.stack)`
-    app.logger.error(f"An unhandled exception occurred on URL {request.url}")
-    app.logger.error(traceback.format_exc())  # Logs the full stack trace
-
-    # 2. Prepare the context for your template
-    #    This matches the context from your Node.js example
-    context = {
-        'layout': False,
-        'code': 500,
-        'error': "Internal Server Error",
-        'message': "An unexpected error occurred on the server.",
-        # SECURITY NOTE: Only show detailed errors in debug mode.
-        # In production, you should not expose internal error details to the user.
-        'details': str(error.original_exception) if app.debug else "No details available.",
-        'pagename': "Home",
-        'page': '/dashboard'
-    }
-
-    # 3. Render the Handlebars error template
-    try:
-        # Assuming your templates are in a 'templates' folder at the root
-        template_path = os.path.join(app.root_path, 'templates', 'Error', 'dError.handlebars')
-        with open(template_path, 'r', encoding='utf-8') as f:
-            source = f.read()
-
-        template = compiler.compile(source)
-        html_output = template(context)
-
-        # 4. Return the rendered template and the 500 status code
-        return html_output, 500
-
-    except Exception as e:
-        # This is a fallback in case your error template itself has an error
-        app.logger.critical(f"FATAL: The error handler failed to render the error template: {e}")
-        return "<h1>Internal Server Error</h1><p>Additionally, the error reporting page failed to render.</p>", 500
 
 
 # --- Run the App ---

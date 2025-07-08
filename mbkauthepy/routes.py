@@ -7,7 +7,7 @@ import secrets
 import importlib.metadata
 
 # Flask and related imports
-from flask import Blueprint, request, jsonify, session, make_response, current_app
+from flask import Blueprint, request, jsonify, session, make_response, current_app,render_template
 from markupsafe import Markup  # Corrected import for Markup
 
 # Database and Authentication imports
@@ -103,6 +103,8 @@ def login_page():
     except Exception as e:
         logging.error(f"Error rendering Handlebars template: {e}", exc_info=True)
         return "An internal error occurred.", 500
+
+
 @mbkauthe_bp.route("/api/login", methods=["POST"])
 def login():
     try:
@@ -195,8 +197,9 @@ def login():
             session_id = secrets.token_hex(256)
             logger.info(f"Generated session ID for username: {username}")
 
-            update_query = 'UPDATE "Users" SET "SessionId" = %s WHERE "id" = %s'
-            cur.execute(update_query, (session_id, user["id"]))
+
+            update_query = 'UPDATE "session" SET username = %s WHERE sid = %s'
+            cur.execute(update_query, ( str(user['UserName']),session_id))
 
             session.clear()
             session['user'] = {
@@ -400,3 +403,4 @@ def mbkauthe_info():
         info_data=info_data,
         package_json=package_json
     )
+

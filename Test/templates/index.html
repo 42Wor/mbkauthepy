@@ -1,23 +1,46 @@
+<!-- Test/templates/index.html -->
 {% extends "base.html" %}
 
-{% block title %}Docs - MBKAuthe Test Site{% endblock %}
+{% block title %}MBKAuthePy Test Home{% endblock %}
 
 {% block content %}
-    <h1>MBKAuthe Testing Documentation</h1>
-    <p>This website is designed to test the <code>mbkauthe</code> authentication library.</p>
-    <ul>
-        <li>The <a href="{{ url_for('home') }}">Home Page</a> is protected and requires you to be logged in.</li>
-        <li>If you are not logged in, you will be redirected to the <a href="{{ url_for('login') }}">Login Page</a>.</li>
-        <li>Use the navigation bar above to log in or log out.</li>
-    </ul>
-    <p>The actual authentication logic (checking passwords, managing sessions) is handled by the <code>mbkauthe</code> library via its API endpoints (<code>/mbkauthe/api/login</code> and <code>/mbkauthe/api/logout</code>), which are called by the JavaScript on the login page and in the navigation bar.</p>
+<div class="container mt-5">
+    <div class="jumbotron">
+        <h1 class="display-4">MBKAuthePy Test Application</h1>
+        <p class="lead">This is the main testing website for the <strong>mbkauthepy</strong> library.</p>
+        <hr class="my-4">
+        <p>Use the navigation bar to test different features of the authentication system.</p>
 
-    <h2>Current Status</h2>
-    {% if session.get('user') %}
-        <p style="color: green;">You are currently logged in as: <strong>{{ session['user']['username'] }}</strong></p>
-        <p>You can access the <a href="{{ url_for('home') }}">Home Page</a>.</p>
-    {% else %}
-        <p style="color: red;">You are currently not logged in.</p>
-        <p>Click <a href="{{ url_for('login') }}">Login</a> in the navigation bar to log in.</p>
-    {% endif %}
+        <h2>Test Plan:</h2>
+        <ul>
+            <li>
+                Attempt to access the protected <a href="{{ url_for('home') }}">Home Page</a>.
+            </li>
+            <li>
+                <!-- THIS IS THE CORRECTED LINE -->
+                If you are not logged in, you should be redirected to the <a href="{{ url_for('mbkauthe.login_page') }}">Login Page</a>.
+            </li>
+            <li>
+                After logging in, you should be able to access the Home Page and the <a href="{{ url_for('home') }}"> home Page</a>.
+            </li>
+            <li>
+                Use the <a href="{{ url_for('mbkauthe.logout') }}">Logout</a> link to destroy your session.
+            </li>
+            <li>
+                Test the <a href="{{ url_for('mbkauthe.mbkauthe_info') }}">500 Error Page</a>.
+            </li>
+        </ul>
+
+        <!-- This block dynamically shows login status -->
+        {% if session.user %}
+            <div class="alert alert-success mt-4" role="alert">
+                You are currently logged in as <strong>{{ session.user.username }}</strong>.
+            </div>
+        {% else %}
+            <div class="alert alert-warning mt-4" role="alert">
+                You are currently <strong>not logged in</strong>.
+            </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
