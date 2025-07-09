@@ -144,7 +144,8 @@ mbkautheVar='{
     "COOKIE_EXPIRE_TIME": "2", # In days
     "DOMAIN": "mbktechstudio.com", # Use your actual domain in production
     "Main_SECRET_TOKEN": "your-secret-token-for-terminate-api", # Added for terminateAllSessions auth
-    "loginRedirectURL": "/"
+    "loginRedirectURL": "/",
+    "EncryptedPassword": "False"
 }'
 ```
 

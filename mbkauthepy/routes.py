@@ -194,21 +194,12 @@ def login():
                         logger.warning(f"Invalid 2FA code for username: {username}")
                         return jsonify({"success": False, "message": "Invalid 2FA code"}), 401
 
-            session_id = secrets.token_hex(256)
+            session_id = secrets.token_hex(32)
             logger.info(f"Generated session ID for username: {username}")
 
-
-
-            update_query = 'UPDATE "session" SET username = %s WHERE sid = %s'
-            logger.info(f"{str(user['UserName'])},{session_id})")
-            try:
-                cur.execute(update_query, (str(user['UserName']), session_id))
-                if cur.rowcount == 0:
-                    logger.error(f"No session found for ID: {session_id}")
-                conn.commit()
-            except Exception as e:
-                logger.error(f"Update failed: {str(e)}")
-
+            # Update user session in database
+            update_query = 'UPDATE "Users" SET "SessionId" = %s WHERE "UserName" = %s'
+            cur.execute(update_query, (session_id, user['UserName']))
 
             session.clear()
             session['user'] = {
@@ -221,7 +212,31 @@ def login():
 
             conn.commit()
             logger.info(f"User '{username}' logged in successfully")
-            return jsonify({"success": True, "message": "Login successful", "sessionId": session_id}), 200
+
+            # Create response with session cookie
+            response = jsonify({
+                "success": True,
+                "message": "Login successful",
+                "sessionId": session_id
+            })
+
+            # Set cookie with proper options
+            cookie_options = {
+                'key': 'sessionId',
+                'value': session_id,
+                'max_age': 86400 * 30,  # 30 days
+                'secure': True,
+                'httponly': True,
+                'samesite': 'Lax'
+            }
+
+            # Only set samesite=None if using HTTPS
+            if request.is_secure:
+                cookie_options['samesite'] = 'None'
+
+            response.set_cookie(**cookie_options)
+
+            return response, 200
 
     except (Exception, psycopg2.DatabaseError) as e:
         logger.error(f"Error during login for {username}: {e}", exc_info=True)

@@ -34,7 +34,7 @@ def load_config():
     required_keys = [
         "APP_NAME", "SESSION_SECRET_KEY", "IS_DEPLOYED",
         "LOGIN_DB", "MBKAUTH_TWO_FA_ENABLE", "DOMAIN", "Main_SECRET_TOKEN",
-        "SESSION_TYPE", "EncryptedPassword"
+         "EncryptedPassword","loginRedirectURL"
     ]
     for key in required_keys:
         if key not in config or config[key] is None:
@@ -96,7 +96,7 @@ def configure_flask_app(app):
     app.config["SECRET_KEY"] = MBKAUTHE_CONFIG["SESSION_SECRET_KEY"]
 
     # Flask-Session configuration
-    app.config["SESSION_TYPE"] = MBKAUTHE_CONFIG["SESSION_TYPE"]
+
     app.config["SESSION_PERMANENT"] = True  # Use expiration
     app.config["PERMANENT_SESSION_LIFETIME"] = MBKAUTHE_CONFIG["PERMANENT_SESSION_LIFETIME"]
     app.config["SESSION_USE_SIGNER"] = True  # Encrypt session cookie content
@@ -108,12 +108,6 @@ def configure_flask_app(app):
     if MBKAUTHE_CONFIG["IS_DEPLOYED"] and MBKAUTHE_CONFIG["DOMAIN"] != 'localhost':
         app.config["SESSION_COOKIE_DOMAIN"] = f".{MBKAUTHE_CONFIG['DOMAIN']}"
 
-    # --- Specific config for SQLAlchemy session backend ---
-    if MBKAUTHE_CONFIG["SESSION_TYPE"] == "sqlalchemy":
-        app.config['SQLALCHEMY_DATABASE_URI'] = MBKAUTHE_CONFIG['LOGIN_DB']
-        # Prevent Flask-SQLAlchemy from tracking modifications, as it's a performance overhead
-        # and not needed for the session table.
-        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # Store mbkauthe config within Flask app config for easy access
     app.config["MBKAUTHE_CONFIG"] = MBKAUTHE_CONFIG

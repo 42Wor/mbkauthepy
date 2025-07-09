@@ -6,7 +6,11 @@ from flask import (
     Flask, render_template, request, redirect, url_for, session, flash
 )
 from dotenv import load_dotenv
-from mbkauthepy import configure_mbkauthe
+from mbkauthepy import (configure_mbkauthe ,
+                        validate_session,
+                        check_role_permission,
+                        authenticate_token
+                        )
 
 # Load environment variables from .env file FIRST
 load_dotenv()
@@ -53,6 +57,7 @@ def index():
 
 
 @app.route('/home')
+@validate_session
 def home():
     """Protected home page."""
     # Manual session check for this route
@@ -69,9 +74,19 @@ def home():
     return render_template('home.html', username=username)
 
 
+@app.route('/protected')
+@validate_session
+def protected_route():
+    return "<h1>Success!</h1><p>You have accessed a protected page because you have a valid session.</p>"
 
 
-# --- Run the App ---
+@app.route('/admin-only')
+@validate_session  # Good practice to validate session first
+@check_role_permission('Admin')
+def admin_only_route():
+    return "<h1>Success!</h1><p>You have accessed this page because you are an Admin.</p>"
+
+
 if __name__ == '__main__':
     # Use host='0.0.0.0' to make it accessible on your network
     # Set debug=False in production!

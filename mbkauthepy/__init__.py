@@ -1,78 +1,74 @@
 # mbkauthepy/__init__.py
 
 import logging
-from flask import Flask
-# from flask_session import Session # Not needed if session init is removed/handled by app
+from flask import Flask, render_template, url_for
+from werkzeug.exceptions import HTTPException
 from flask_cors import CORS
 
-# --- Initialize Extensions ---
-# sess = Session() # Not needed here if app sets interface manually
-
-# --- Import Components ---
-# Import only what's needed at module level or within functions
-
 # --- Exports ---
-# Define __all__ to explicitly state what the package exports
 __all__ = [
     "validate_session",
     "check_role_permission",
     "validate_session_and_role",
     "authenticate_token",
     "get_user_data",
-    "mbkauthe_bp",          # Export the blueprint
-    "configure_mbkauthe",   # Export the setup function
-    # "db_pool",           # REMOVED - No global pool to export
+    "mbkauthe_bp",
+    "configure_mbkauthe",
     "get_cookie_options"
-
 ]
 
 
 # --- Setup Function ---
 def configure_mbkauthe(app: Flask):
     """
-    Configures mbkauthe components (config, routes) for the Flask app.
-    Initializes DB connection functions but DOES NOT manage a global pool
-    and DOES NOT initialize Flask-Session itself.
+    Configures mbkauthe components (config, routes, error handler) for the Flask app.
 
     Args:
         app (Flask): The Flask application instance.
     """
-    # --- Import Components INSIDE the function ---
-    from .config import configure_flask_app # Need this to apply config to app
-    # from .db import init_db_pool, close_db_pool # REMOVED Pool functions
-    from .routes import mbkauthe_bp # Blueprint needed for registration
+    from .config import configure_flask_app
+    from .routes import mbkauthe_bp
 
     logger = logging.getLogger(__name__)
     logger.info("Configuring mbkauthe base components for Flask app...")
 
-    # 1. Apply mbkauthe specific configurations to the Flask app
-    # This loads MBKAUTHE_CONFIG into app.config['MBKAUTHE_CONFIG']
-    # and sets other Flask config keys
     configure_flask_app(app)
-
-    # 2. Initialize Database Pool <-- REMOVED -->
-    # No pool initialization needed here. Connections are request-scoped.
-    # logger.info("DB Pool initialization skipped (using request-scoped connections).")
-
-    # 3. Initialize Flask-Session <-- SKIPPED -->
-    # The main application (app.py) should set app.session_interface manually.
-    # sess.init_app(app) # REMOVED
-    # logger.info(f"Flask-Session default init skipped (use custom interface or app setup).")
-
-    # 4. Initialize CORS (Optional)
-    # CORS(mbkauthe_bp, ...)
-
-    # 5. Register the Blueprint containing /mbkauthe/api/* routes
     app.register_blueprint(mbkauthe_bp)
     logger.info("mbkauthe API blueprint registered.")
 
-    # 6. Register App Teardown for DB Pool Cleanup <-- REMOVED -->
-    # No global pool to close. Individual connections are closed in 'finally' blocks.
-    # @app.teardown_appcontext
-    # def shutdown_session(exception=None):
-    #     close_db_pool()
+    # Register the Global Error Handler
+    @app.errorhandler(HTTPException)
+    def handle_http_error(error):
+        """
+        Catches all HTTP exceptions and renders our single error page.
+        """
+        # ==================================================================
+        #  FIXED SECTION
+        # ==================================================================
+        # Check if the 'home' endpoint is registered before trying to build a URL for it.
+        # The correct way is to check the app's view_functions dictionary.
+        if 'home' in app.view_functions:
+            home_url = url_for('home')
+        else:
+            # Fallback to the root URL if no 'home' endpoint exists.
+            home_url = '/'
+        # ==================================================================
 
+        response = error.get_response()
+        response.data = render_template(
+            "error.html",
+            code=error.code,
+            name=error.name,
+            message=error.description,
+            page_url=home_url,  # Use the safely determined URL
+            page_name="home"
+        )
+        response.content_type = "text/html"
+        return response
+
+    logger.info("Global HTTP error handler registered.")
     logger.info("mbkauthe base configuration complete.")
+
 
 # --- Import items needed for export AFTER the function definition ---
 from .middleware import (
@@ -80,8 +76,7 @@ from .middleware import (
     check_role_permission,
     validate_session_and_role,
     authenticate_token,
-    get_user_data,
+
 )
-from .routes import mbkauthe_bp # Ensure blueprint is available for export
-# from .db import db_pool # REMOVED pool export
-from .utils import get_cookie_options # Export utils if needed
+from .routes import mbkauthe_bp
+from .utils import get_cookie_options
