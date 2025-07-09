@@ -18,7 +18,7 @@ import requests
 import pyotp
 
 # Handlebars template engine import
-import pybars
+from pybars import Compiler
 
 # Local module imports
 from .db import get_db_connection, release_db_connection
@@ -49,60 +49,89 @@ def after_request_callback(response):
     return response
 
 
-@mbkauthe_bp.route('/login')
-def login_page():
-    """
-    Renders the login page using a Handlebars template with an absolute path.
+import os
+from pathlib import Path
+import importlib.metadata
+from flask import current_app, session
+
+
+def render_handlebars(template, context, partials=None):
+    """Render a Handlebars template with the given context and partials.
+
+    Args:
+        template: Path to the Handlebars template file
+        context: Dictionary with template variables
+        partials: Optional dictionary of partial templates
+
+    Returns:
+        tuple: (rendered_template, status_code)
     """
     try:
-        config = current_app.config.get("MBKAUTHE_CONFIG", {})
-        try:
-            version = importlib.metadata.version("mbkauthepy")
-        except importlib.metadata.PackageNotFoundError:
-            version = "N/A"
+        template_path = Path(template)
+        if not template_path.is_file():
+            raise FileNotFoundError(f"Template file not found: {template_path}")
 
-        user = session.get('user')
-        context = {
-            'layout': False,
-            'customURL': config.get('loginRedirectURL', '/home'),
-            'userLoggedIn': bool(user),
-            'username': user.get('username', '') if user else '',
-            'version': version,
-            'appName': config.get('APP_NAME', 'APP').upper()
-        }
+        # Read main template
+        with open(template_path, 'r', encoding='utf-8') as template_file:
+            main_template_source = template_file.read()
 
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        template_path = os.path.join(current_dir, 'templates', 'loginmbkauthe.handlebars')
+        # Initialize compiler
+        compiler = Compiler()
 
-        if not os.path.exists(template_path):
-            logging.error(f"Template file does not exist at: {template_path}")
-            return "Error: Login template not found.", 404
+        # Register partials if provided
+        if partials:
+            for name, partial_path in partials.items():
+                partial_path = Path(partial_path)
+                if partial_path.is_file():
+                    with open(partial_path, 'r', encoding='utf-8') as partial_file:
+                        compiler.register_partial(name, partial_file.read())
 
-        compiler = pybars.Compiler()
-        with open(template_path, "r", encoding="utf-8") as f:
-            source = f.read()
+        # Compile and render
+        compiled_template = compiler.compile(main_template_source)
+        rendered = compiled_template(context, helpers=None)
+        return rendered, 200
 
-        template = compiler.compile(source)
-        html_output = template(context)
-
-        return html_output  # Removed Markup
-
-    except pybars._compiler.PybarsError as e:
-        logging.error(f"Handlebars template syntax error in {template_path}: {e}")
-        try:
-            with open(template_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                error_line = lines[min(len(lines), 882)] if len(lines) > 882 else ""
-                logging.error(f"Line 883 content: {error_line.strip()}")
-        except Exception as log_error:
-            logging.error(f"Failed to read template for debugging: {log_error}")
-        return "Error: Invalid Handlebars template syntax.", 400
-    except FileNotFoundError:
-        logging.error(f"Handlebars template not found. Looked for: {template_path}")
-        return "Error: Login template not found.", 404
+    except FileNotFoundError as e:
+        current_app.logger.error(f"Template file error: {str(e)}")
+        return "Template not found.", 404
     except Exception as e:
-        logging.error(f"Error rendering Handlebars template: {e}", exc_info=True)
+        current_app.logger.error(f"Error rendering Handlebars template: {str(e)}", exc_info=True)
         return "An internal error occurred.", 500
+
+
+@mbkauthe_bp.route('/login')
+def login_page():
+    """Render the login page using a Handlebars template."""
+    config = current_app.config.get("MBKAUTHE_CONFIG", {})
+
+    # Get package version
+    try:
+        version = importlib.metadata.version("mbkauthepy")
+    except importlib.metadata.PackageNotFoundError:
+        version = "N/A"
+
+    user = session.get('user')
+    context = {
+        'layout': False,
+        'customURL': config.get('loginRedirectURL', '/home'),
+        'userLoggedIn': bool(user),
+        'username': user.get('username', '') if user else '',
+        'version': version,
+        'appName': config.get('APP_NAME', 'APP').upper()
+    }
+
+    # Get template path - works whether installed or in development
+    try:
+        # Try package-relative path first
+        import mbkauthepy
+        package_dir = Path(mbkauthepy.__file__).parent
+        template_path = package_dir / 'templates' / 'loginmbkauthe.handlebars'
+    except ImportError:
+        # Fallback to absolute path (development)
+        pass
+
+    response, status = render_handlebars(template_path, context)
+    return response, status
 
 
 @mbkauthe_bp.route("/api/login", methods=["POST"])
