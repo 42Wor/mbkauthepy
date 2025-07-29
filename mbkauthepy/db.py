@@ -4,7 +4,7 @@ import psycopg2
 import psycopg2.extras # Keep for DictCursor if used elsewhere
 import logging
 import os # Needed for environment variable access if MBKAUTHE_CONFIG isn't passed
-
+import json
 # Import config loading logic or access config directly
 # Assuming MBKAUTHE_CONFIG is loaded in config.py and accessible
 try:
@@ -63,3 +63,65 @@ def release_db_connection(conn):
              # Log error if closing fails, but don't typically raise
              # as the primary operation might have succeeded.
              logger.error(f"Error closing DB connection: {error}", exc_info=True)
+
+
+def query_session_table(pretty_print=True):
+    """
+    Query and print all records from the session table in JSON format.
+
+    Args:
+        pretty_print (bool): Whether to format the JSON output for readability
+
+    Returns:
+        list: A list of session records as dictionaries
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM session")
+            columns = [desc[0] for desc in cursor.description]  # Get column names
+            sessions = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+            if pretty_print:
+                print("Session Table Data:")
+                print(json.dumps(sessions, indent=2, default=str))
+            else:
+                print(sessions)
+
+            return sessions
+    except Exception as e:
+        logger.error(f"Error querying session table: {e}", exc_info=True)
+        raise
+    finally:
+        if conn:
+            release_db_connection(conn)
+
+
+def clear_all_sessions():
+    """
+    Delete all rows from the session table.
+
+    Returns:
+        int: Number of rows deleted
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM session")
+            deleted_rows = cursor.rowcount
+            conn.commit()  # Important - commits the transaction
+            logger.info(f"Deleted {deleted_rows} sessions")
+            return deleted_rows
+    except Exception as e:
+        if conn:
+            conn.rollback()  # Rollback on error
+        logger.error(f"Error clearing session table: {e}", exc_info=True)
+        raise
+    finally:
+        if conn:
+            release_db_connection(conn)
+query_session_table()
+#clear_all_sessions()
+#query_session_table()

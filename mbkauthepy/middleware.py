@@ -1,139 +1,357 @@
-# mbkauthepy/middleware.py
-
 import logging
+import importlib.metadata
+from pathlib import Path
 from functools import wraps
-from flask import session, request, current_app, abort
-from werkzeug.exceptions import HTTPException
+from flask import session, request, current_app, jsonify, make_response, render_template
 import psycopg2
 import psycopg2.extras
 from .db import get_db_connection, release_db_connection
 
 logger = logging.getLogger(__name__)
 
+
+def _get_cookie_options():
+    """Get cookie configuration options based on deployment settings"""
+    config = current_app.config.get("MBKAUTHE_CONFIG", {})
+    options = {
+        'path': '/',
+        'httponly': True,
+        'samesite': 'Lax'
+    }
+
+    if config.get('IS_DEPLOYED') == 'true':
+        options['domain'] = f".{config.get('DOMAIN')}"
+        options['secure'] = True
+    else:
+        options['secure'] = False
+
+    return options
+
+
+def _clear_auth_cookies(response):
+    """Clear authentication cookies from response"""
+    options = _get_cookie_options()
+    cookie_names = ['mbkauthe.sid', 'sessionId', 'username']
+    for name in cookie_names:
+        response.set_cookie(name, '', max_age=0, **options)
+
+
+# Replace the _auth_error_response function with:
+def _auth_error_response(code, error, message, pagename, page):
+    """Handle error responses with Handlebars templates"""
+    try:
+        template_path = Path(__file__).parent / 'templates' / 'Error' / 'dError.handlebars'
+        if not template_path.exists():
+            raise FileNotFoundError(f"Template not found at {template_path}")
+
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_source = f.read()
+
+        from pybars import Compiler
+        compiler = Compiler()
+        template = compiler.compile(template_source)
+
+        context = {
+            'layout': False,
+            'code': code,
+            'error': error,
+            'message': message,
+            'pagename': pagename,
+            'page': page
+        }
+
+        rendered = template(context)
+        response = make_response(rendered, code)
+        _clear_auth_cookies(response)
+        return response
+
+    except Exception as e:
+        logger.error(f"Error rendering error template: {e}")
+        # Fallback to simple text response
+        response = make_response(
+            f"Error {code}: {error}\n{message}\nGo to {pagename} page: {page}",
+            code
+        )
+        _clear_auth_cookies(response)
+        return response
+
 def _restore_session_from_cookie():
-    """
-    Attempt to restore a user session from the 'sessionId' cookie.
-    This is called if a request arrives without a server-side session but with a cookie.
-    Returns True on success, False on failure.
-    """
+    """Attempt to restore session from sessionId cookie"""
     if 'user' not in session and 'sessionId' in request.cookies:
         session_id = request.cookies.get('sessionId')
         conn = None
         try:
             conn = get_db_connection()
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                query = 'SELECT id, "UserName", "Role", "SessionId" FROM "Users" WHERE "SessionId" = %s AND "Active" = TRUE'
+                query = 'SELECT * FROM "Users" WHERE "SessionId" = %s'
                 cur.execute(query, (session_id,))
                 user = cur.fetchone()
 
                 if user:
-                    session.clear()
                     session['user'] = {
                         'id': user['id'],
                         'username': user['UserName'],
-                        'role': user['Role'],
-                        'sessionId': user['SessionId']
+                        'sessionId': session_id
                     }
-                    session.permanent = True
                     logger.info(f"Restored session from cookie for user: {user['UserName']}")
                     return True
         except Exception as e:
-            logger.error(f"Error during session restoration from cookie: {e}", exc_info=True)
+            logger.error(f"Session restoration error: {e}", exc_info=True)
         finally:
             if conn:
                 release_db_connection(conn)
     return False
 
+
 def validate_session(f):
-    """
-    Decorator to validate the user's session against the database.
-    This decorator does not take arguments.
-    """
+    """Middleware to validate user session"""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         config = current_app.config.get("MBKAUTHE_CONFIG", {})
-        if 'user' not in session and not _restore_session_from_cookie():
-            abort(401, "Authentication required. Please log in to continue.")
+
+        # Try to restore session from cookie if needed
+        if 'user' not in session:
+            if not _restore_session_from_cookie():
+                logger.warning("User not authenticated")
+                return _auth_error_response(
+                    code=401,
+                    error="Not Logged In",
+                    message="You Are Not Logged In. Please Log In To Continue.",
+                    pagename="Login",
+                    page=f"/mbkauthe/login?redirect={request.url}"
+                )
+
         user_session = session['user']
         conn = None
         try:
             conn = get_db_connection()
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                # Verify session against database
                 query = 'SELECT "SessionId", "Active", "Role", "AllowedApps" FROM "Users" WHERE "id" = %s'
                 cur.execute(query, (user_session['id'],))
                 user_db = cur.fetchone()
+
                 if not user_db or user_db['SessionId'] != user_session['sessionId']:
+                    logger.warning(f"Session invalidated for user {user_session['username']}")
                     session.clear()
-                    abort(401, "Your session has expired or is invalid. Please log in again.")
+                    return _auth_error_response(
+                        code=401,
+                        error="Session Expired",
+                        message="Your Session Has Expired. Please Log In Again.",
+                        pagename="Login",
+                        page=f"/mbkauthe/login?redirect={request.url}"
+                    )
+
+                # Check account active status
                 if not user_db['Active']:
+                    logger.warning(f"Inactive account: {user_session['username']}")
                     session.clear()
-                    abort(403, "Your account is currently inactive. Please contact an administrator.")
+                    return _auth_error_response(
+                        code=401,
+                        error="Account Inactive",
+                        message="Your Account Is Inactive. Please Contact Support.",
+                        pagename="Support",
+                        page="https://mbktechstudio.com/Support"
+                    )
+
+                # Check application authorization
+                app_name = config.get("APP_NAME")
                 if user_db['Role'] != "SuperAdmin":
                     allowed_apps = user_db.get('AllowedApps') or []
-                    app_name = config.get("APP_NAME")
-                    if not app_name or app_name.lower() not in [app.lower() for app in allowed_apps]:
-                        abort(403, f"Access denied. You are not authorized for the '{app_name or 'Unknown App'}' application.")
-                return f(*args, **kwargs)
-        except HTTPException:
-            raise
+                    if not any(app_name.lower() == app.lower() for app in allowed_apps):
+                        logger.warning(f"User {user_session['username']} not authorized for {app_name}")
+                        session.clear()
+                        return _auth_error_response(
+                            code=401,
+                            error="Unauthorized",
+                            message=f"You Are Not Authorized To Use The Application \"{app_name}\"",
+                            pagename="Home",
+                            page=f"/{config.get('loginRedirectURL')}"
+                        )
+
+            return f(*args, **kwargs)
+
         except Exception as e:
-            logger.error(f"Unexpected error during session validation for user '{user_session.get('username')}': {e}", exc_info=True)
-            abort(500, "An internal server error occurred while validating your session.")
+            logger.error(f"Session validation error: {e}", exc_info=True)
+            return jsonify(success=False, message="Internal Server Error"), 500
         finally:
             if conn:
                 release_db_connection(conn)
+
     return decorated_function
 
-def check_role_permission(required_role):
-    """
-    Decorator factory to check if the user has the required role.
-    This decorator takes an argument.
-    """
+
+def check_role_permission(required_role=None, not_allowed=None):
+    """Middleware factory for role-based permissions"""
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            config = current_app.config.get("MBKAUTHE_CONFIG", {})
+
             if 'user' not in session:
-                abort(401, "Authentication is required to check role permissions.")
-            user_role = session['user'].get('role')
-            if required_role.lower() != "any" and user_role != required_role:
-                logger.warning(
-                    f"Role permission denied for user '{session['user']['username']}'. "
-                    f"Required: '{required_role}', Has: '{user_role}'."
+                logger.warning("Role check failed: No session")
+                return _auth_error_response(
+                    code=401,
+                    error="Not Logged In",
+                    message="You Are Not Logged In. Please Log In To Continue.",
+                    pagename="Login",
+                    page=f"/mbkauthe/login?redirect={request.url}"
                 )
-                abort(403, f"Access denied. This action requires the '{required_role}' role.")
+
+            user_role = session['user'].get('role', '')
+
+            # Check for not-allowed role
+            if not_allowed and user_role == not_allowed:
+                logger.warning(f"Role not allowed: {user_role}")
+                return _auth_error_response(
+                    code=403,
+                    error="Access Denied",
+                    message=f"You are not allowed to access this resource with role: {not_allowed}",
+                    pagename="Home",
+                    page=f"/{config.get('loginRedirectURL')}"
+                )
+
+            # Check required role (skip if "any")
+            if required_role and required_role.lower() != "any":
+                if user_role != required_role:
+                    logger.warning(f"Role mismatch: Required {required_role}, has {user_role}")
+                    return _auth_error_response(
+                        code=403,
+                        error="Access Denied",
+                        message=f"You do not have permission to access this resource. Required role: {required_role}",
+                        pagename="Home",
+                        page=f"/{config.get('loginRedirectURL')}"
+                    )
+
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
-def validate_session_and_role(required_role):
-    """
-    Decorator factory that chains session validation and role checking.
-    This decorator takes an argument.
-    """
+
+def validate_session_and_role(required_role=None, not_allowed=None):
+    """Combined session validation and role check"""
+
     def decorator(f):
-        # Apply decorators from the inside out.
-        # 1. check_role_permission is applied to the original function `f`.
-        # 2. validate_session is applied to the result of that.
-        return validate_session(check_role_permission(required_role)(f))
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # First validate session
+            session_validator = validate_session(lambda: None)
+            session_response = session_validator()
+            if session_response:
+                return session_response
+
+            # Then check role permissions
+            role_checker = check_role_permission(required_role, not_allowed)(f)
+            return role_checker(*args, **kwargs)
+
+        return decorated_function
+
     return decorator
+
 
 def authenticate_token(f):
-    """
-    Decorator to authenticate API requests using a static token.
-    This decorator does not take arguments.
-    """
+    """Static token authentication middleware"""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         config = current_app.config.get("MBKAUTHE_CONFIG", {})
         provided_token = request.headers.get("Authorization", "")
         expected_token = config.get("Main_SECRET_TOKEN")
+
         if not expected_token:
-             logger.error("CRITICAL: Main_SECRET_TOKEN is not configured.")
-             abort(500, "Server authentication is not configured correctly.")
-        if provided_token.startswith("Bearer "):
-            provided_token = provided_token.split(" ", 1)[1]
-        if not provided_token or provided_token != expected_token:
-            logger.warning("API token authentication failed.")
-            abort(401, "Invalid or missing API authentication token.")
-        return f(*args, **kwargs)
+            logger.error("Main_SECRET_TOKEN not configured")
+            return jsonify(success=False, message="Server authentication misconfigured"), 500
+
+        logger.debug(f"Received token: {provided_token}")
+
+        if provided_token == expected_token:
+            logger.info("Static token authentication successful")
+            return f(*args, **kwargs)
+        else:
+            logger.warning("Static token authentication failed")
+            return jsonify(success=False, message="Unauthorized"), 401
+
     return decorated_function
+
+
+def authapi(required_role=None):
+    """API key authentication with role validation"""
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            config = current_app.config.get("MBKAUTHE_CONFIG", {})
+            token = request.headers.get("Authorization", "")
+            logger.info(f"AuthAPI received token: {token[:3]}...{token[-3:]}")
+
+            if not token:
+                logger.warning("No API token provided")
+                return jsonify(success=False, message="Authorization token is required"), 401
+
+            conn = None
+            try:
+                conn = get_db_connection()
+                with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                    # Validate API token
+                    cur.execute('SELECT * FROM "UserAuthApiKey" WHERE "key" = %s', (token,))
+                    token_record = cur.fetchone()
+
+                    if not token_record:
+                        logger.warning(f"Invalid API token: {token[:3]}...")
+                        return jsonify(success=False, message="Invalid API token"), 401
+
+                    username = token_record['username']
+                    logger.info(f"Valid API token for user: {username}")
+
+                    # Validate user account
+                    cur.execute(
+                        'SELECT * FROM "Users" WHERE "UserName" = %s AND "Active" = TRUE',
+                        (username,)
+                    )
+                    user = cur.fetchone()
+
+                    if not user:
+                        logger.warning(f"User not found or inactive: {username}")
+                        return jsonify(success=False, message="User not found or inactive"), 401
+
+                    if username.lower() == "demo":
+                        logger.warning("Demo user API access denied")
+                        return jsonify(
+                            success=False,
+                            message="Demo user not allowed for API access"
+                        ), 401
+
+                    # Check role permissions
+                    user_role = user['Role']
+                    if required_role and user_role != required_role and user_role != "SuperAdmin":
+                        logger.warning(
+                            f"Role permission denied. Required: {required_role}, Actual: {user_role}"
+                        )
+                        return jsonify(
+                            success=False,
+                            message=f"Access denied. Required role: {required_role}"
+                        ), 403
+
+                    # Attach user info to request
+                    request.api_user = {
+                        'username': username,
+                        'role': user_role
+                    }
+
+                    logger.info("API authentication successful")
+                    return f(*args, **kwargs)
+
+            except Exception as e:
+                logger.error(f"API authentication error: {e}", exc_info=True)
+                return jsonify(success=False, message="Internal Server Error"), 500
+            finally:
+                if conn:
+                    release_db_connection(conn)
+
+        return decorated_function
+
+    return decorator

@@ -11,6 +11,7 @@ __all__ = [
     "check_role_permission",
     "validate_session_and_role",
     "authenticate_token",
+    "authapi",  # Added new authapi middleware
     "get_user_data",
     "mbkauthe_bp",
     "configure_mbkauthe",
@@ -35,7 +36,7 @@ def configure_mbkauthe(app: Flask):
     configure_flask_app(app)
     app.register_blueprint(mbkauthe_bp)
     logger.info("mbkauthe API blueprint registered.")
-
+    app = Flask(__name__, template_folder='path/to/mbkauthepy/templates')
     # Register the Global Error Handler
     @app.errorhandler(HTTPException)
     def handle_http_error(error):
@@ -76,7 +77,7 @@ from .middleware import (
     check_role_permission,
     validate_session_and_role,
     authenticate_token,
-
+    authapi  # Import the new authapi middleware
 )
 from .routes import mbkauthe_bp
-from .utils import get_cookie_options
+from .utils import get_cookie_options, get_user_data
