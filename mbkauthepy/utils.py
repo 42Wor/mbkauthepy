@@ -71,21 +71,13 @@ def get_user_data(user_id=None, username=None):
 
 
 def clear_auth_cookies(response):
-    """
-    Clear all authentication cookies from the response.
-
-    Args:
-        response: Flask response object
-
-    Returns:
-        The modified response object
-    """
+    """Clear authentication cookies from response"""
     options = get_cookie_options()
     cookie_names = ['mbkauthe.sid', 'sessionId', 'username']
     for name in cookie_names:
-        response.delete_cookie(name, **options)
-    return response
-
+        response.delete_cookie(name, path=options.get('path'), domain=options.get('domain'),
+                              secure=options.get('secure'), httponly=options.get('httponly'),
+                              samesite=options.get('samesite'))
 
 def generate_session_id():
     """

@@ -16,11 +16,7 @@ from mbkauthepy import (configure_mbkauthe ,
 load_dotenv()
 
 # --- Flask App Initialization ---
-app = Flask(__name__, instance_relative_config=False)
-
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'a-different-secret-key-for-flask-flash')
-if app.config['SECRET_KEY'] == 'a-different-secret-key-for-flask-flash':
-     print("WARNING: Using default FLASK_SECRET_KEY. Set a proper secret in .env for production.")
+app = Flask(__name__)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,22 +24,10 @@ app.logger.setLevel(logging.INFO)
 
 # --- MBKAUTHE Configuration ---
 
-try:
-    app.logger.info("Attempting to configure mbkauthe base components...")
-    configure_mbkauthe(app)
-except Exception as e:
-    app.logger.error(f"FATAL: Failed to configure mbkauthe: {e}", exc_info=True)
-    print(f"FATAL: Failed to configure mbkauthe: {e}")
-    exit(1)
+configure_mbkauthe(app)
 
 
-try:
-    # Get the table name from the config mbkauthe loaded into app.config
-    mbk_config = app.config.get("MBKAUTHE_CONFIG", {})
-except Exception as e:
-     app.logger.error(f"FATAL: Failed to initialize custom session interface: {e}", exc_info=True)
-     print(f"FATAL: Failed to initialize custom session interface: {e}")
-     exit(1)
+
 
 # --- Routes for the Testing Website ---
 

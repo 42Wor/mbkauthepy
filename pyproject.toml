@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "mbkauthepy"
 version = "1.6.8"
 authors = [
-  { name="Maaz.waheed", email="maaz.waheed@mbktechstudio.com" },
+  { name = "Maaz Waheed", email = "maaz.waheed@mbktechstudio.com" },
 ]
-description = "A fully featured, secure, and extensible authentication system for Python Flask applications.Originally ported from the Node.js version to provide multi-language support for full-stack apps."
+description = "A fully featured, secure, and extensible authentication system for Python Flask applications. Originally ported from the Node.js version to provide multi-language support for full-stack apps."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
@@ -42,17 +42,15 @@ dependencies = [
     "Flask-Cors>=4.0",
     "SQLAlchemy>=1.4",
     "importlib-metadata; python_version<'3.10'",
-    "pybars3",
+    "pybars3>=0.9.7",
 ]
 
 [project.urls]
 Homepage = "https://github.com/42Wor/mbkauthepy"
 Repository = "https://github.com/42Wor/mbkauthepy"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["mbkauthepy*"]
-exclude = ["tests*", "docs*"]
+[tool.setuptools]
+packages = ["mbkauthepy"]
 
 [tool.setuptools.package-data]
 mbkauthepy = ["templates/*.handlebars"]
