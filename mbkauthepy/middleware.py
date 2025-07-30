@@ -56,7 +56,8 @@ def _auth_error_response(code, error, message, pagename, page):
             'error': error,
             'message': message,
             'pagename': pagename,
-            'page': page
+            'page': page,
+            'version': importlib.metadata.version("mbkauthepy") if importlib.metadata else "N/A"
         }
 
         rendered = template(context)
@@ -342,6 +343,9 @@ def authapi(required_role=None):
                     logger.info("API authentication successful")
                     return f(*args, **kwargs)
 
+            except Exception as e:
+                logger.error(f"API authentication error: {e}", exc_info=True)
+                return jsonify(success=False, message="Internal Server Error"), 500
             except Exception as e:
                 logger.error(f"API authentication error: {e}", exc_info=True)
                 return jsonify(success=False, message="Internal Server Error"), 500

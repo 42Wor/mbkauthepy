@@ -30,7 +30,7 @@ mbkauthe_bp = Blueprint('mbkauthe', __name__, url_prefix='/mbkauthe')
 
 def get_template_path(template_name):
     """Get absolute path to template file with multiple fallback locations"""
-    package_dir = Path(__file__).parent.parent
+    package_dir = Path(__file__).parent
     paths_to_try = [
         package_dir / 'templates' / template_name,
         Path.cwd() / 'templates' / template_name,
@@ -48,7 +48,7 @@ def render_handlebars_template(template_name, context):
     """Render a Handlebars template with the given context"""
     template_path = get_template_path(template_name)
     if not template_path:
-        return "Template not found", 404
+        return "Template not found111111111111", 404
 
     try:
         with open(template_path, 'r', encoding='utf-8') as f:
@@ -700,8 +700,10 @@ def unauthorized_error(error):
         "Login",
         url_for('mbkauthe.login_page')
     )
-    rendered = render_handlebars_template('error.handlebars', context)
-    return rendered if rendered else str(error), 401
+    rendered = render_handlebars_template('Error.handlebars', context)
+    if isinstance(rendered, tuple):
+        return rendered
+    return rendered, 401
 
 @mbkauthe_bp.app_errorhandler(403)
 def forbidden_error(error):
@@ -712,8 +714,10 @@ def forbidden_error(error):
         "Home",
         current_app.config.get("MBKAUTHE_CONFIG", {}).get('loginRedirectURL', '/home')
     )
-    rendered = render_handlebars_template('error.handlebars', context)
-    return rendered if rendered else str(error), 403
+    rendered = render_handlebars_template('Error.handlebars', context)
+    if isinstance(rendered, tuple):
+        return rendered
+    return rendered, 403
 
 @mbkauthe_bp.app_errorhandler(404)
 def not_found_error(error):
@@ -724,5 +728,25 @@ def not_found_error(error):
         "Home",
         current_app.config.get("MBKAUTHE_CONFIG", {}).get('loginRedirectURL', '/home')
     )
-    rendered = render_handlebars_template('error.handlebars', context)
-    return rendered if rendered else str(error), 404
+    rendered = render_handlebars_template('Error.handlebars', context)
+    if isinstance(rendered, tuple):
+        return rendered
+    return rendered, 404
+
+@mbkauthe_bp.app_errorhandler(500)
+def internal_server_error(error):
+    """Handle 500 errors with custom template"""
+    logger.error(f"Caught an unhandled exception: {error}", exc_info=True)
+    original_exception = getattr(error, 'original_exception', error)
+
+    context = get_error_context(
+        500, "Internal Server Error",
+        "An unexpected error occurred. Our team has been notified.",
+        "Home",
+        current_app.config.get("MBKAUTHE_CONFIG", {}).get('loginRedirectURL', '/home'),
+        details=str(original_exception)
+    )
+    rendered = render_handlebars_template('Error.handlebars', context)
+    if isinstance(rendered, tuple):
+        return rendered
+    return rendered, 500
