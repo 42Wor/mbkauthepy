@@ -663,7 +663,7 @@
       <div class="navbar">
         <a class="logo">
           <img src="https://mbktechstudio.com/Assets/Images/Icon/dgicon.svg" alt="MBK Tech Studio Logo">
-          <span class="logo-text">{% if app %}{{ app }}{% else %}MBK Authe{% endif %}</span>
+          <span class="logo-text">{{#if app}}{{app}}{{else}}MBK Authe{{/if}}</span>
         </a>
       </div>
     </nav>
@@ -689,7 +689,7 @@
         <a href="{{ page }}" class="status-link">Go to {{ pagename }} page</a>
       </div>
 
-      {% if details %}
+      {{#if details}}
       <div class="details-wrapper" onclick="toggleDetailsDropdown(this)">
         <div class="details-header">
           <span>Show Error Details</span>
@@ -703,7 +703,7 @@
           </button>
         </div>
       </div>
-      {% endif %}
+      {{/if}}
     </div>
   </section>
 
