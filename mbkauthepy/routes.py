@@ -48,19 +48,33 @@ def render_handlebars_template(template_name, context):
     """Render a Handlebars template with the given context"""
     template_path = get_template_path(template_name)
     if not template_path:
-        return "Template not found111111111111", 404
+        return f"Template '{template_name}' not found.", 404
 
     try:
         with open(template_path, 'r', encoding='utf-8') as f:
             template_source = f.read()
 
         compiler = Compiler()
+        partials = {}
+
+        # Load and compile 'showmessage' partial
+        partial_path = get_template_path('showmessage.handlebars')
+        if partial_path:
+            with open(partial_path, 'r', encoding='utf-8') as f:
+                partial_source = f.read()
+                partials['showmessage'] = compiler.compile(partial_source)
+        else:
+            logger.warning("Partial 'showmessage.handlebars' not found, continuing without it.")
+
         template = compiler.compile(template_source)
-        rendered = template(context)
+        rendered = template(context, partials=partials)
         return rendered
+    except pybars.PybarsError as e:
+        logger.error(f"Handlebars template syntax error in {template_name}: {e}")
+        return f"Error rendering template: Syntax error in {template_name}", 500
     except Exception as e:
-        logger.error(f"Error rendering template {template_name}: {e}")
-        return "Error rendering template", 500
+        logger.error(f"Error rendering template {template_name}: {e}", exc_info=True)
+        return f"Error rendering template {template_name}", 500
 
 @mbkauthe_bp.after_request
 def after_request_callback(response):
@@ -192,7 +206,8 @@ def login():
             # 2FA verification if enabled
             if config.get("MBKAUTH_TWO_FA_ENABLE") and user.get("TwoFAStatus"):
                 if not token_2fa:
-                    return jsonify({"success": False, "twoFactorRequired": True}), 200
+                    session['pre_auth_user'] = {'id': user['id'], 'username': user['UserName'], 'role': user['Role'], 'TwoFASecret': user['TwoFASecret']}
+                    return jsonify({"success": True, "twoFactorRequired": True}), 200
 
                 if not pyotp.TOTP(user["TwoFASecret"]).verify(token_2fa, valid_window=1):
                     return jsonify({"success": False, "message": "Invalid 2FA code"}), 401
@@ -265,13 +280,105 @@ def two_fa_page():
     if 'pre_auth_user' not in session:
         return redirect(url_for('mbkauthe.login_page'))
 
+    config = current_app.config.get("MBKAUTHE_CONFIG", {})
+    try:
+        version = importlib.metadata.version("mbkauthepy")
+    except importlib.metadata.PackageNotFoundError:
+        version = "N/A"
+
     context = {
         'layout': False,
-        'customURL': current_app.config.get("MBKAUTHE_CONFIG", {}).get('loginRedirectURL', '/home')
+        'customURL': config.get('loginRedirectURL', '/home'),
+        'version': version,
+        'appName': config.get('APP_NAME', 'APP').upper()
     }
 
     rendered = render_handlebars_template('2fa.handlebars', context)
-    return rendered if rendered else "Error loading template", 500
+
+    if isinstance(rendered, tuple):
+        return rendered
+    
+    return rendered, 200
+
+@mbkauthe_bp.route("/api/verify-2fa", methods=["POST"])
+def verify_2fa():
+    """Verify the 2FA token and complete the login process."""
+    if 'pre_auth_user' not in session:
+        return jsonify({"success": False, "message": "No pre-authentication data found. Please login again."}), 400
+
+    data = request.get_json()
+    token_2fa = data.get("token")
+
+    if not token_2fa:
+        return jsonify({"success": False, "message": "2FA token is required."}), 400
+
+    pre_auth_user = session['pre_auth_user']
+    totp = pyotp.TOTP(pre_auth_user['TwoFASecret'])
+
+    if not totp.verify(token_2fa, valid_window=1):
+        return jsonify({"success": False, "message": "Invalid 2FA token."}), 401
+
+    # 2FA successful, now create the full session
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            config = current_app.config["MBKAUTHE_CONFIG"]
+            session_id = secrets.token_hex(32)
+            sid = secrets.token_urlsafe(24)
+            csrf_secret = secrets.token_hex(16)
+            session_expiry = config.get("SESSION_PERMANENT_MAX_AGE", 172800000) / 1000
+            expires_at = datetime.now() + timedelta(seconds=session_expiry)
+
+            cookie_opts = get_cookie_options()
+            cookie_opts['originalMaxAge'] = int(session_expiry * 1000)
+            cookie_opts['expires'] = expires_at.isoformat() + 'Z'
+            sess_data = {
+                'cookie': cookie_opts,
+                'csrfSecret': csrf_secret,
+                'user': {
+                    'id': pre_auth_user['id'],
+                    'username': pre_auth_user['username'],
+                    'role': pre_auth_user['role'],
+                    'sessionId': session_id
+                }
+            }
+
+            cur.execute('UPDATE "Users" SET "SessionId" = %s WHERE "id" = %s',
+                        (session_id, pre_auth_user['id']))
+            cur.execute(
+                """
+                INSERT INTO "session" (sid, sess, expire, username)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (sid, json.dumps(sess_data), expires_at, pre_auth_user['username'])
+            )
+
+            session.clear()
+            session['user'] = sess_data['user']
+            session.permanent = True
+            conn.commit()
+
+            redirect_url = config.get('loginRedirectURL', '/home')
+            response = jsonify({
+                "success": True,
+                "message": "Login successful",
+                "redirectUrl": redirect_url,
+                "sessionId": session_id
+            })
+            response.set_cookie("sessionId", session_id, **get_cookie_options())
+            response.set_cookie("mbkauthe.sid", sid, **get_cookie_options())
+            return response
+
+    except Exception as e:
+        logger.error(f"2FA verification error: {e}", exc_info=True)
+        if conn:
+            conn.rollback()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+    finally:
+        if conn:
+            release_db_connection(conn)
+
 
 @mbkauthe_bp.route("/api/logout", methods=["POST"])
 @validate_session

@@ -654,7 +654,7 @@
             <form id="loginForm" method="POST">
                 <div class="form-group">
                     <input id="loginUsername" class="form-input" type="text" name="username" placeholder=" " required
-                        pattern="^[a-z0-9.]+$"
+                        pattern="^[a-z0-9.]+$\"
                         title="Username must contain lowercase letters, numbers, and periods only, no spaces, no special characters."
                         oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9.]/g, '')" />
                     <label class="form-label">Username</label>
@@ -778,33 +778,30 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        loginButtonText.textContent = 'Success! Redirecting...';
-                        sessionStorage.setItem('sessionId', data.sessionId);
-
-                        if (rememberMe) {
-                            localStorage.setItem('rememberedUsername', username);
+                        if (data.twoFactorRequired) {
+                            // 2FA is required, redirect to the 2FA page
+                            loginButtonText.textContent = 'Redirecting to 2FA...';
+                            window.location.href = '/mbkauthe/2fa';
                         } else {
-                            localStorage.removeItem('rememberedUsername');
+                            // Login is successful and no 2FA is needed
+                            loginButtonText.textContent = 'Success! Redirecting...';
+                            sessionStorage.setItem('sessionId', data.sessionId);
+
+                            if (rememberMe) {
+                                localStorage.setItem('rememberedUsername', username);
+                            } else {
+                                localStorage.removeItem('rememberedUsername');
+                            }
+
+                            // Redirect to the appropriate page
+                            const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
+                            window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '{{customURL}}';
                         }
-
-                        // Redirect to the appropriate page
-                        const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
-                        window.location.href = redirectUrl ? decodeURIComponent(redirectUrl) : '{{customURL}}';
-
                     } else {
                         // Handle errors
                         loginButton.disabled = false;
                         loginButtonText.textContent = 'Login';
-
-                        if (data.message === "Please Enter 2FA code") {
-                            console.log('2FA required');
-                            document.getElementById('tokenCon').classList.remove('disable');
-                            document.getElementById('tokenCon').classList.add('enable');
-                            document.getElementById('tokenCon').style.animation = 'fadeInUp 0.4s ease-out';
-                            showMessage('Please enter your 2FA token', '2FA Required');
-                        } else {
-                            showMessage(data.message || 'Login failed. Please try again.', 'Login Error');
-                        }
+                        showMessage(data.message || 'Login failed. Please try again.', 'Login Error');
                     }
                 })
                 .catch(error => {
