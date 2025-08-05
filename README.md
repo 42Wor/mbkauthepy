@@ -1,9 +1,8 @@
 # MBKAUTHEPY
 
 [![PyPI](https://img.shields.io/pypi/v/mbkauthepy?color=blue)](https://pypi.org/project/mbkauthepy/)
-[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mbkauthepy)](https://pypi.org/project/mbkauthepy/)
-[![Downloads](https://img.shields.io/pypi/dm/mbkauthepy)](https://pypistats.org/packages/mbkauthepy)
 
 > **mbkauthepy** is a fully featured, secure, and extensible authentication system for **Python Flask** applications.  
 > Ported from the Node.js version to provide seamless **multi-language support** for full-stack apps.
@@ -268,4 +267,3 @@ Would you like me to generate:
 - ✅ Frontend login template in HTML?
 
 Let me know which extras you want!
-
