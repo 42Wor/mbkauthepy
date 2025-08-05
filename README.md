@@ -1,9 +1,5 @@
 # MBKAUTHEPY
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/42Wor/mbkauthepy/refs/heads/main/docs/log.png" alt="MBKAUTHEPY Logo" width="180">
-</p>
-
 [![PyPI](https://img.shields.io/pypi/v/mbkauthepy?color=blue)](https://pypi.org/project/mbkauthepy/)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mbkauthepy)](https://pypi.org/project/mbkauthepy/)
@@ -11,6 +7,11 @@
 
 > **mbkauthepy** is a fully featured, secure, and extensible authentication system for **Python Flask** applications.  
 > Ported from the Node.js version to provide seamless **multi-language support** for full-stack apps.
+
+---
+>**Current Version:** `1.6.8` (Python) - Recommended for compatibility with `mbkauthe` (JavaScript) `1.3.1`
+
+**Note:** This project is actively maintained. We welcome contributions and feedback to improve its features and stability.
 
 ---
 ## 📚 Table of Contents
@@ -26,6 +27,7 @@
 - [🔐 Security Notes](#-security-notes)
 - [📜 License](#-license)
 - [🙋 Contact & Support](#-contact--support)
+- [🤝 Contributing](#-contributing)
 
 ---
 
@@ -33,7 +35,7 @@
 
 | Feature                  | Description                                                                 |
 |--------------------------|-----------------------------------------------------------------------------|
-| 🧠 Multi-language Support | Use in both Python (`mbkauthe`) and JavaScript (`mbkauthe` via [npm](https://github.com/MIbnEKhalid/mbkauthe))         |
+| 🧠 Multi-language Support | Use in both Python (`mbkauthe`) and JavaScript (`mbkauthe` via [npm](https://www.npmjs.com/package/mbkauthe))         |
 | 🔒 Secure Auth           | Session-based authentication with secure cookies and optional 2FA          |
 | 🧑‍🤝‍🧑 Role-based Access | Decorators for validating roles and permissions on protected routes         |
 | 🔐 2FA Support           | Time-based One-Time Password (TOTP) with `pyotp`                            |
@@ -93,7 +95,6 @@ pip install -r requirements.txt
 
 ```bash
 pip install mbkauthepy
-
 ```
 
 ---
@@ -161,7 +162,7 @@ mbkautheVar='{
 | `@check_role_permission("Role")` | Checks if user has required role |
 | `@validate_session_and_role("Role")` | Shortcut for validating both |
 | `@authenticate_token` | Verifies request via API token header |
-
+| `@authapi(required_role=None)` | Decorator for API authentication with optional role enforcement |
 Example:
 
 ```python
@@ -203,14 +204,15 @@ data = get_user_data("johndoe", ["FullName", "email"])
 
 These are available by default after calling `configure_mbkauthe(app)`:
 
-| Method | Endpoint                                                               | Description                                                    |
-|--------|------------------------------------------------------------------------|----------------------------------------------------------------|
-| POST   | `/mbkauthe/api/login`                                                  | Authenticate and create session                                |
-| POST   | `/mbkauthe/api/logout`                                                 | Terminate current session                                      |
-| POST   | `/mbkauthe/api/terminateAllSessions`                                   | Clears all sessions (admin only)                               |
-| GET    | `/mbkauthe/i` or `/mbkauthe/info` or  `mbkauthe.mbkauthe_info`         | Current package version or metadata from the installed package |
-| GET    | `mbkauthe.login_page` or `/mbkauthe/login`                             | login page in package                                          |
-
+| Method | Endpoint                              | function                            | Description                                                    |
+|--------|---------------------------------------|-------------------------------------|----------------------------------------------------------------|
+| POST   | `/mbkauthe/api/login`                 | `mbkauthe.login()`                  | Authenticate and create session                                |
+| GET    | `/mbkauthe/api/logout`                | `mbkauthe.logout()`                 | Terminate current session                                      |
+| POST   | `/mbkauthe/api/terminateAllSessions`  | `mbkauthe.terminate_all_sessions()` | Clears all sessions (admin only)                               |
+| GET    | `/mbkauthe/i` or `/mbkauthe/info`| `mbkauthe.mbkauthe_info()`          | Current package version or metadata from the installed package |
+| GET    | `mbkauthe.login_page()` | `/mbkauthe/login`                   | login page in package                                          |
+| GET    | `/mbkauthe/2fa` | `mbkauthe.two_fa_page()`            | 2FA verification page                                          |
+| POST   | `/mbkauthe/api/verify-2fa` | `mbkauthe.verify_2fa()`             | Verify 2FA code                                                |
 
 ---
 
@@ -245,6 +247,18 @@ Developed by **Maaz Waheed**
 - Issues / PRs welcome!
 
 ---
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature-branch`).
+3.  Make your changes.
+4.  Commit your changes (`git commit -m 'Add some feature'`).
+5.  Push to the branch (`git push origin feature-branch`).
+6.  Create a new Pull Request.
+
+---
 
 Would you like me to generate:
 
@@ -254,3 +268,4 @@ Would you like me to generate:
 - ✅ Frontend login template in HTML?
 
 Let me know which extras you want!
+
